@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "page_type" text DEFAULT 'landing';

@@ -1,26 +1,33 @@
 @import "tailwindcss";
 
+/* Smooth animated scroll for anchor jumps (sticky order button → form).
+   Pure CSS = compositor-driven, zero JS, no performance cost. */
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
 :root {
   --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --foreground: #111111;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* System font stack = zero webfont delay. Great Arabic rendering on all devices. */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, Arial,
+    "Noto Kufi Arabic", "Noto Sans Arabic", sans-serif;
+}
+
+/* Below-fold content: browser skips layout + paint until near viewport.
+   Big rendering win on long landing pages (many images). Never applied to
+   the order form (anchor target + interactive) — images only. */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
 }

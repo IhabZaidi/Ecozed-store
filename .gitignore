@@ -32,9 +32,19 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the example template, which is safe (placeholders only) and needed for setup
+!.env.example
 
 # vercel
 .vercel
+
+# uploaded product images (generated at runtime via /api/admin/upload)
+/public/uploads/*
+!/public/uploads/.gitkeep
+
+# local dev artifacts
+dev.log
+.pgdata/
 
 # typescript
 *.tsbuildinfo
