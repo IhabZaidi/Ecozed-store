@@ -1,82 +1,101 @@
-# Ecozed Store — COD Landing Pages (DZ 🇩🇿)
+# متجر Ecozed — صفحات هبوط للدفع عند الاستلام (الجزائر 🇩🇿)
 
-Next.js + Tailwind + local Postgres + Google Sheets + Telegram. No storefront — every
-product is a super-fast Arabic RTL landing page at `/{slug}` with a Cash-on-Delivery form.
+نظام متكامل لبيع المنتجات عبر صفحات هبوط سريعة بالعربية (RTL) مع الدفع عند الاستلام.
+لا توجد واجهة متجر — كل منتج له رابط مباشر (`/your-product`) يُشارك في إعلانات فيسبوك،
+وينتهي باستمارة طلب + تأكيد.
 
-## 1) Setup (local Postgres)
+## التقنيات المستخدمة
+
+| التقنية | الدور |
+|---|---|
+| Next.js 16 (App Router) | الواجهات + API |
+| Tailwind CSS 4 | التصميم |
+| PostgreSQL + Drizzle ORM | قاعدة البيانات (منتجات، طلبات، إعدادات) |
+| Meta Pixel + Conversions API | تتبع الأحداث للإعلانات |
+| Telegram Bot API | إشعار فوري بكل طلب |
+| Google Sheets API | نسخة احتياطية للطلبات في جدول |
+| Sharp | ضغط الصور (WebP) وتقطيع الطويلة |
+
+## التشغيل محليًا
 
 ```bash
 npm install
-cp .env.example .env   # then fill it
-docker compose up -d db             # one-command local Postgres 16
-# ...or use your own Postgres and set DATABASE_URL to it
-npm run db:push        # creates products + orders tables
-npm run dev
+cp .env.example .env   # ثم املأ القيم
+docker compose up -d db          # قاعدة بيانات محلية جاهزة
+# ...أو استعمل PostgreSQL الخاص بك واضبط DATABASE_URL
+npm run db:push        # إنشاء الجداول
+npm run dev            # يعمل على http://localhost:3005
 ```
 
-Default local URL: `postgresql://postgres:postgres@localhost:5432/ecozed`
+متغيرات `.env` المطلوبة فقط: `DATABASE_URL` ،`ADMIN_PASSWORD` ،`ADMIN_SESSION_SECRET` ،`NEXT_PUBLIC_SITE_URL`.
+البكسل وتلغرام وجوجل شيت تُضبط من لوحة الإدارة (قاعدة البيانات) — متغيرات البيئة تبقى كاحتياط فقط.
 
-Required env: `DATABASE_URL`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`,
-`NEXT_PUBLIC_SITE_URL`. Pixel, Telegram and Google Sheets are configured in
-`/admin` settings (DB) — their env vars remain only as fallback.
+## لوحة الإدارة (`/admin`)
 
-## 2) Admin flow
+الدخول بكلمة مرور `ADMIN_PASSWORD`.
 
-1. Open `/admin` → login with `ADMIN_PASSWORD`.
-2. “منتج جديد” → fill title/price, upload images (auto-compressed to WebP 1200px q72),
-   save → landing page is live at `/your-slug`.
-3. Share that link in Facebook ads. Orders appear in the dashboard + Telegram + Google Sheet.
+- **➕ منتج جديد:** الاسم، الرابط (slug)، السعر، الصور (تُضغط تلقائيًا إلى WebP)،
+  نوع الصفحة (🚀 هبوط / 📄 منتج كامل)، طريقة البيع (📦 كمية / 🎁 عروض بباقات وأسعار ثابتة + نص اختياري لكل عرض).
+- **الطلبات:** عرض، تغيير الحالة (📝 مسودة / 🆕 جديد / ✅ مؤكد / 🚚 تم الشحن / 📦 تم التوصيل / ❌ ملغي)،
+  مع تفاصيل التوصيل (🏠 منزل / 🏢 مكتب) وسعره.
+- **⚙️ الإعدادات** (4 تبويبات):
+  - 📊 **بكسل فيسبوك:** الـ Pixel ID + توكن Conversions API + كود التجربة (يُمسح بعد الاختبار)، مع شرح الأحداث.
+  - 📲 **تلغرام:** توكن البوت + Chat ID + زر رسالة تجربة.
+  - 🚚 **التوصيل:** اسم شركة التوصيل + سعر كل ولاية (منزل/مكتب).
+  القاعدة: الطريقة التي سعرها 0 أو فارغ **لا تظهر** للزبون في تلك الولاية،
+  والولاية بلا أي سعر تُظهر *لا يوجد توصيل لهذه الولاية حاليًا* ويُمنع طلبها.
+  خيار المكتب يظهر فقط عند وجود سعر فوق 0.
+  - 📗 **جوجل شيت:** بيانات حساب الخدمة (شارك الجدول مع بريده أولًا).
 
-## Telegram bot setup (order notifications)
+## مسار الطلب (Cash on Delivery)
 
-1. In Telegram, open **@BotFather** → `/newbot` → name it → copy the token.
-2. Open your new bot and press **Start** (send any message).
-3. Open **@userinfobot** → it replies with your numeric ID (Chat ID).
-4. In `/admin` → **⚙️ الإعدادات** → Telegram section → paste token + Chat ID → save.
-5. Click **✉️ إرسال رسالة تجربة** — the test message must arrive in Telegram.
-   Every new order then notifies you instantly. A broken token never blocks orders.
+1. الزبون يملأ الاستمارة → **حفظ تلقائي كمسودة** في الخلفية (بدون خطوة إضافية، وبدون أي أحداث أو إشعارات).
+2. الضغط على زر الطلب → تحقق شامل ثم حفظ كطلب حقيقي → شاشة نجاح بملء الشاشة.
+3. عند الحفظ: حدث `Purchase` عبر السيرفر + رسالة تلغرام + صف في جوجل شيت — كلها في الخلفية ولا تؤخر الرد.
 
-## 3) Facebook Pixel + CAPI (deduplicated)
+- السعر يُحسب في السيرفر فقط (العرض يجب أن يطابق باقة معرفة، وإلا رُفض الطلب).
+- التوصيل يُحسب في السيرفر حسب الولاية والطريقة؛ الولاية بلا توصيل تُظهر: *لا يوجد توصيل لهذه الولاية حاليًا* ويُمنع الطلب.
+- الهاتف الجزائري بكل الصيغ: `0550…` و `+213550…` (يُحفظ موحدًا).
 
-Configure in `/admin` → **⚙️ البكسل** (Pixel ID + CAPI token + optional test code).
-Stored in the `settings` table, applied within a minute — env vars are only the fallback.
+## أحداث فيسبوك (بدون تكرار مضمون)
 
-Event map (each conversion counted exactly once):
-- Browser: `PageView` only (Meta's official snippet, inlined — no ad-block-safe dependency)
-- Server (CAPI): `ViewContent` on page view, `InitiateCheckout` after a valid
-  order is confirmed saved, `Lead` on draft save, `Purchase` strictly on client
-  confirmation (hashed phone, `fbp`/`fbc` for matching). Incomplete forms, failed
-  validation and no-shipping wilayas emit zero events.
-- Test with a Test Event Code in settings, then clear it. Verify in Events Manager → Test Events.
+| الحدث | المصدر |
+|---|---|
+| `PageView` | المتصفح فقط (كود Meta الرسمي) |
+| `ViewContent` | السيرفر عند عرض الصفحة |
+| `InitiateCheckout` | السيرفر بعد حفظ طلب سليم فقط |
+| `Purchase` | السيرفر بعد الحفظ في قاعدة البيانات حصرًا |
 
-## 4) Speed strategy (why landing is fast)
+المتصفح لا يرسل سوى PageView، فاستحالة التكرار. رقم الهاتف بصيغة E.164 مشفر + البلدية + الولاية + `fbp`/`fbc` لرفع جودة المطابقة (Event Match Quality). الاستمارات الناقصة والطلبات الفاشلة لا ترسل شيئًا.
 
-- No Google Fonts (system Arabic stack), no heavy libs on landing (only Pixel + form JS).
-- `next/image` AVIF→WebP, hero `priority + fetchPriority=high`, rest lazy, `sizes` capped at 640px.
-- **Tall-image splitting:** images over 1800px tall are auto-sliced at upload into
-  ≤900px parts that paint top-down (WebP/AVIF can't render progressively, so one
-  giant file would block first paint). Parts share a group id and stack seamlessly.
-- **Blur-up placeholders:** every upload records a ~300B LQIP — instant paint, sharp swap.
-- **`content-visibility: auto`** on below-fold blocks (browser skips their layout/paint).
-- **Immutable 1-year cache** on `/uploads/*` (filenames are unique per upload).
-- **Pixel preconnect** only when a pixel is configured.
-- ISR (`revalidate = 60`): cached HTML, fresh prices.
-- Pixel loads inline + `noscript` fallback; CAPI fire-and-forget (never blocks TTFB).
-- Uploaded images stripped + resized + WebP via Sharp. Keep admin originals under 5MB.
+> **مهم للاختبار:** ضع كود Test Event في الإعدادات أثناء التجربة وراقب الأحداث في
+> Test Events، ثم **امسحه** عند الإطلاق — فبوجوده تذهب الأحداث لبيئة الاختبار ولا تُحتسب للإعلانات.
+> لتلغرام: راسل البوت أولًا (Start) ثم خذ رقمك من @userinfobot.
 
-## 5) Order pipeline
+## لماذا صفحة الهبوط سريعة؟
 
-`POST /api/orders` → Zod validate (DZ phone `05/06/07xxxxxxxx` or `+213…`, wilaya, commune)
-→ price resolved server-side (offer must match exactly, or qty × unit price)
-→ shipping resolved server-side from settings (per-wilaya fee or default)
-→ Postgres `orders` row → CAPI `Purchase` → Telegram message → Google Sheet row.
-Sheet: share the spreadsheet with `GOOGLE_SHEETS_CLIENT_EMAIL` first.
+- بدون خطوط خارجية، وبدون مكتبات ثقيلة (JS تفاعلي = الاستمارة فقط).
+- الصور الطويلة **تُقطع تلقائيًا** لأجزاء تُرسم من الأعلى للأسفل + صورة ضبابية فورية (~300 بايت) + أول صورة بأولوية قصوى والباقي تحميل كسول.
+- `content-visibility` يتجاهل ما تحت الشاشة، وتخزين مؤقت سنة للصور، و`preconnect` لفيسبوك عند وجود بكسل.
+- الصفحة مخزنة مؤقتًا (ISR 60 ثانية) وأحداث السيرفر لا تؤخر العرض أبدًا.
 
-Shipping modes (settings → 🚚): **🏠 home** and **🏢 stopdesk** (with
-shipping company name shown to the client). Per-wilaya home/stopdesk fees —
-empty means free delivery; stopdesk shows only when a fee above 0 exists.
-Server rejects stopdesk orders when disabled. Total = price + fee.
+## النشر (Vercel)
 
-Pricing modes (per product, set in admin): **📦 quantity** (stepper × unit price)
-or **🎁 offers** (client picks a pack, savings badge vs unit price).
-Client always sees cost + shipping = total (landing pages stay price-free by design).
+- ارفع الكود إلى GitHub ثم اربط المستودع بـ Vercel.
+- أضف متغيرات البيئة في إعدادات المشروع (خاصة `DATABASE_URL` لقاعدة بيانات حقيقية).
+- ملاحظة: ملفات `public/uploads` لا تبقى على Vercel — للإنتاج استعمل روابط صور خارجية أو أخبرنا لربط تخزين سحابي.
+
+## بنية المشروع
+
+```
+app/[slug]/        صفحات الهبوط/المنتج + الاستمارة + البكسل
+app/admin/         لوحة الإدارة (منتجات، طلبات، إعدادات)
+app/api/orders/    إنشاء/مسودة الطلبات + الأحداث + الإشعارات
+app/api/fb-event/  حدث InitiateCheckout عبر السيرفر
+lib/               قاعدة البيانات، التحقق، فيسبوك، تلغرام، شيت، الولايات
+drizzle/           ملفات ترحيل قاعدة البيانات
+```
+
+---
+
+**بُني بواسطة Ihab** — دعوة في ظهر الغيب تكفي 🤲
