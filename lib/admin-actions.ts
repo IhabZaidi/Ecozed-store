@@ -2,6 +2,9 @@
 
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
+import sharp from "sharp";
+import { readFile } from "fs/promises";
+import path from "path";
 import { db } from "@/lib/db";
 import { products, orders, settings, type ProductImage, type ProductOffer } from "@/lib/schema";
 import { MAX_PRODUCT_IMAGES } from "@/lib/image";
@@ -68,6 +71,71 @@ function num(v: FormDataEntryValue | null, fallback = 0) {
   return Number.isFinite(n) && n >= 0 ? Math.round(n) : fallback;
 }
 
+async function tinyBlur(buf: Buffer): Promise<string | null> {
+  try {
+    const tiny = await sharp(buf)
+      .resize({ width: 16 })
+      .webp({ quality: 30 })
+      .toBuffer();
+    return `data:image/webp;base64,${tiny.toString("base64")}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fill missing dims/blur for pasted or legacy image URLs (upload flow already
+ * records them). Without dims the landing falls back to unsized <img>, which
+ * reserves zero space → huge layout shifts (Lighthouse CLS killer).
+ * Best-effort with a short timeout: failures keep the plain URL.
+ */
+async function enrichImageDims(images: ProductImage[]): Promise<ProductImage[]> {
+  const probe = async (url: string) => {
+    try {
+      let buf: Buffer;
+      if (url.startsWith("/uploads/")) {
+        buf = await readFile(path.join(process.cwd(), "public", url));
+      } else if (/^https?:\/\//i.test(url)) {
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        if (!res.ok) return null;
+        const ab = await res.arrayBuffer();
+        if (ab.byteLength > 8 * 1024 * 1024) return null;
+        buf = Buffer.from(ab);
+      } else {
+        return null;
+      }
+      const meta = await sharp(buf).metadata();
+      if (!meta.width || !meta.height) return null;
+      return { w: meta.width, h: meta.height, b: await tinyBlur(buf) };
+    } catch {
+      return null;
+    }
+  };
+  return Promise.all(
+    images.map(async (im): Promise<ProductImage> => {
+      if (typeof im === "string") {
+        const url = im.trim();
+        if (!url) return im;
+        const dims = await probe(url);
+        return dims
+          ? { url, w: dims.w, h: dims.h, ...(dims.b ? { b: dims.b } : {}) }
+          : url;
+      }
+      if (!im?.url || imgHasDims(im)) return im;
+      const dims = await probe(im.url);
+      return dims
+        ? { ...im, w: dims.w, h: dims.h, ...(dims.b && !im.b ? { b: dims.b } : {}) }
+        : im;
+    })
+  );
+}
+
+function imgHasDims(im: { w?: unknown; h?: unknown }) {
+  const w = Number(im.w);
+  const h = Number(im.h);
+  return Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0;
+}
+
 function parseOffers(v: FormDataEntryValue | null): ProductOffer[] {
   try {
     const a = JSON.parse(String(v ?? "[]"));
@@ -120,7 +188,7 @@ export async function saveProduct(formData: FormData) {
         : "landing",
     price: num(formData.get("price")),
     oldPrice: num(formData.get("oldPrice")) || null,
-    images: parseImagesJson(formData.get("imagesJson")),
+    images: await enrichImageDims(parseImagesJson(formData.get("imagesJson"))),
     pricingMode,
     offers,
     videoUrl: String(formData.get("videoUrl") || "").trim(),

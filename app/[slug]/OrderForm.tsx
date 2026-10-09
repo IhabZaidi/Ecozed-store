@@ -497,7 +497,7 @@ export default function OrderForm({
       <button
         type="submit"
         disabled={loading || (wilaya !== "" && !hasOption)}
-        className="w-full rounded-2xl bg-green-600 px-6 py-4 text-lg font-extrabold text-white shadow-lg transition active:scale-[0.99] disabled:opacity-60"
+        className="w-full rounded-2xl bg-green-700 px-6 py-4 text-lg font-extrabold text-white shadow-lg transition active:scale-[0.99] disabled:opacity-60"
       >
         {loading ? "جارٍ إرسال الطلب…" : `✅ ${ctaText}`}
       </button>

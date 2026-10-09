@@ -110,7 +110,7 @@ export default function LandingMinimal({ product: p, pixelId, offers, shipTable 
 
       {/* Sticky bottom CTA: button only, no price — auto-hides at the form */}
       <StickyCta>
-        <span className="mx-auto block max-w-xl rounded-xl bg-green-600 px-6 py-3 text-center font-extrabold text-white">
+        <span className="mx-auto block max-w-xl rounded-xl bg-green-700 px-6 py-3 text-center font-extrabold text-white">
           {cta} 👆
         </span>
       </StickyCta>

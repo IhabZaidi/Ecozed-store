@@ -283,7 +283,7 @@ export default async function LandingPage({
               </span>
             ) : null}
           </span>
-          <span className="rounded-xl bg-green-600 px-6 py-3 font-extrabold text-white">
+          <span className="rounded-xl bg-green-700 px-6 py-3 font-extrabold text-white">
             اطلب الآن 👆
           </span>
         </span>
