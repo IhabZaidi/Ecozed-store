@@ -379,11 +379,6 @@ export default function OrderForm({
                   {qtyLabel(o.qty)}
                 </span>
                 <span className="flex shrink-0 items-center gap-1.5">
-                  {o.label ? (
-                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
-                      {o.label}
-                    </span>
-                  ) : null}
                   <span className="font-black">
                     {fmt(o.price)} دج
                   </span>
