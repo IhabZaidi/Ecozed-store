@@ -3,8 +3,11 @@ import { jwtVerify } from "jose";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
+import { put } from "@vercel/blob";
 
 export const runtime = "nodejs";
+// Image processing + Blob upload can exceed the 10s Hobby default.
+export const maxDuration = 60;
 
 // A tall image is split into independently-loading slices above this height.
 // Why: WebP/AVIF don't render progressively — one 3000px file shows NOTHING
@@ -50,6 +53,27 @@ type Part = {
 };
 
 /**
+ * Persist a processed file. Vercel serverless has a read-only filesystem,
+ * so production uploads go to Vercel Blob; local dev keeps using
+ * public/uploads. Same returned URLs shape either way.
+ */
+async function persist(name: string, buf: Buffer): Promise<string> {
+  const token = process.env.BLOB_READ_WRITE_TOKEN;
+  if (token) {
+    const blob = await put(`uploads/${name}`, buf, {
+      access: "public",
+      contentType: "image/webp",
+      token,
+    });
+    return blob.url;
+  }
+  const dir = path.join(process.cwd(), "public", "uploads");
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, name), buf);
+  return `/uploads/${name}`;
+}
+
+/**
  * POST multipart/form-data { file } -> { parts: Part[], bytes, split }
  * Compresses to WebP max 1200px q72 = tiny + fast LCP.
  */
@@ -68,8 +92,6 @@ export async function POST(req: Request) {
 
   const buf = Buffer.from(await file.arrayBuffer());
   const base = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const dir = path.join(process.cwd(), "public", "uploads");
-  await mkdir(dir, { recursive: true });
 
   // Strip metadata + resize + WebP = smallest bytes that still look sharp
   const resized = await sharp(buf)
@@ -83,10 +105,10 @@ export async function POST(req: Request) {
 
   if (H <= SPLIT_THRESHOLD_PX) {
     const name = `${base}.webp`;
-    await writeFile(path.join(dir, name), resized);
+    const url = await persist(name, resized);
     return NextResponse.json({
       parts: [
-        { url: `/uploads/${name}`, width: W, height: H, blur: await lqip(resized) },
+        { url, width: W, height: H, blur: await lqip(resized) },
       ] satisfies Part[],
       bytes: resized.length,
       split: false,
@@ -107,9 +129,9 @@ export async function POST(req: Request) {
       .webp({ quality: 72 })
       .toBuffer();
     const name = `${base}-p${i + 1}.webp`;
-    await writeFile(path.join(dir, name), out);
+    const url = await persist(name, out);
     parts.push({
-      url: `/uploads/${name}`,
+      url,
       width: W,
       height: h,
       blur: await lqip(out),
