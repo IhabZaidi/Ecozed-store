@@ -38,6 +38,8 @@ export default function LandingMinimal({ product: p, pixelId, offers, shipTable 
     const blurProps = blur
       ? { placeholder: "blur" as const, blurDataURL: blur }
       : {};
+    // -mb-px: scaled heights land on fractional pixels (e.g. 516.5px),
+    // which opens 1px white seams between slices — overlap instead.
     if (dims) {
       // Exact intrinsic ratio → full-width, zero crop, zero distortion, zero CLS
       return (
@@ -51,7 +53,7 @@ export default function LandingMinimal({ product: p, pixelId, offers, shipTable 
           fetchPriority={hero ? "high" : undefined}
           loading={hero ? undefined : "lazy"}
           sizes="(max-width: 640px) 100vw, 640px"
-          className="block h-auto w-full"
+          className="-mb-px block h-auto w-full"
           {...blurProps}
         />
       );
@@ -66,7 +68,7 @@ export default function LandingMinimal({ product: p, pixelId, offers, shipTable 
         loading={hero ? "eager" : "lazy"}
         decoding="async"
         {...(hero ? { fetchPriority: "high" as const } : {})}
-        className="block h-auto w-full"
+        className="-mb-px block h-auto w-full"
       />
     );
   };

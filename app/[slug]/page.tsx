@@ -201,7 +201,7 @@ export default async function LandingPage({
                     height={dims.h}
                     loading="lazy"
                     sizes="(max-width: 640px) 100vw, 640px"
-                    className="block h-auto w-full"
+                    className="-mb-px block h-auto w-full"
                     {...(blur
                       ? { placeholder: "blur" as const, blurDataURL: blur }
                       : {})}
