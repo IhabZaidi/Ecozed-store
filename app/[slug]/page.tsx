@@ -69,7 +69,7 @@ export default async function LandingPage({
   const galleryBlocks = groupImages(images.slice(1));
   const features = (p.features as string[] | null) ?? [];
   const pct = discountPct(p.price, p.oldPrice);
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const siteUrl = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL) || "";
   // Per-request unique ID for the server ViewContent (CAPI) event.
   // Impure by necessity (a Server Component renders once per request).
   // eslint-disable-next-line react-hooks/purity

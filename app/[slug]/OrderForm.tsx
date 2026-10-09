@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { WILAYAS } from "@/lib/wilayas";
 import type { ShippingTable } from "@/lib/settings";
 
@@ -30,6 +30,17 @@ function uid() {
   );
 }
 
+// Same normalization as the server (05/06/07… or +213…). Null = unusable.
+// Local helper (not imported from lib) to keep the landing client bundle lean.
+function normalizeClientPhone(raw: string): string | null {
+  let d = raw.replace(/[\s.\-()]/g, "");
+  if (d.startsWith("+")) d = d.slice(1);
+  d = d.replace(/\D/g, "");
+  if (d.startsWith("00213") && d.length === 14) d = d.slice(2);
+  if (d.startsWith("213") && d.length === 12) d = "0" + d.slice(3);
+  return /^(05|06|07)\d{8}$/.test(d) ? d : null;
+}
+
 export default function OrderForm({
   slug,
   price,
@@ -46,6 +57,13 @@ export default function OrderForm({
   const [sel, setSel] = useState(0);
   const [wilaya, setWilaya] = useState("");
   const [method, setMethod] = useState<"home" | "stopdesk">("home");
+
+  // Background draft: saved silently while typing (no new step, no events).
+  // One row per visitor — created once, then updated debounced.
+  const draftRef = useRef<{ id: number; key: string } | null>(null);
+  const draftKeyRef = useRef("");
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveRef = useRef({ orderQty: 1, delivery: "home" as "home" | "stopdesk" });
 
   const validOffers = ((offers ?? []) as Offer[]).filter(
     (o) => o.qty >= 1 && o.price >= 100
@@ -80,6 +98,61 @@ export default function OrderForm({
   const fmt = (n: number) =>
     plainNumbers ? String(n) : n.toLocaleString("ar-DZ");
 
+  // Keep latest qty/method for the debounced draft saver (avoids stale closures).
+  useEffect(() => {
+    liveRef.current = { orderQty, delivery };
+  });
+  useEffect(
+    () => () => {
+      if (draftTimer.current) clearTimeout(draftTimer.current);
+    },
+    []
+  );
+
+  function queueDraft(form: HTMLFormElement) {
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => void saveDraft(form), 1500);
+  }
+
+  async function saveDraft(form: HTMLFormElement) {
+    if (!form.isConnected) return;
+    const fd = new FormData(form);
+    const name = String(fd.get("fullName") || "").trim();
+    const phone = normalizeClientPhone(String(fd.get("phone") || ""));
+    // Only real info creates rows — no junk drafts from half-typed forms.
+    if (!phone || name.length < 3) return;
+    if (!draftKeyRef.current) draftKeyRef.current = uid();
+    const { orderQty: q, delivery: d } = liveRef.current;
+    try {
+      const res = await fetch("/api/orders/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug,
+          fullName: name,
+          phone: String(fd.get("phone") || ""),
+          wilayaCode: String(fd.get("wilayaCode") || ""),
+          commune: String(fd.get("commune") || ""),
+          address: String(fd.get("address") || ""),
+          qty: q,
+          delivery: d,
+          ...(draftRef.current
+            ? { draftId: draftRef.current.id, key: draftRef.current.key }
+            : { eventId: draftKeyRef.current }),
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && data?.orderId) {
+        draftRef.current = {
+          id: data.orderId,
+          key: data.key || draftKeyRef.current,
+        };
+      }
+    } catch {
+      /* silent: drafts must never disturb the buyer */
+    }
+  }
+
   // NOTE: no event fires from focus, typing, or failed submits.
   // InitiateCheckout is sent only after the server confirms the order saved
   // (see onSubmit success path), and Purchase is sent by the server itself
@@ -103,6 +176,9 @@ export default function OrderForm({
       delivery,
       notes: "",
       eventId,
+      ...(draftRef.current
+        ? { draftId: draftRef.current.id, draftKey: draftRef.current.key }
+        : {}),
     };
 
     // basic client check before the round-trip
@@ -111,20 +187,7 @@ export default function OrderForm({
       setLoading(false);
       return;
     }
-    // client check mirrors the server: 05/06/07… or +213… (separators ignored)
-    const digits = body.phone
-      .replace(/[\s.\-()]/g, "")
-      .replace(/^\+/, "")
-      .replace(/\D/g, "");
-    const normalized =
-      digits.startsWith("00213") && digits.length === 14
-        ? digits.slice(2)
-        : digits;
-    const local =
-      normalized.startsWith("213") && normalized.length === 12
-        ? "0" + normalized.slice(3)
-        : normalized;
-    if (!/^(05|06|07)\d{8}$/.test(local)) {
+    if (!normalizeClientPhone(body.phone)) {
       setError("رقم الهاتف غير صحيح (مثال: 0550123456 أو +213550123456)");
       setLoading(false);
       return;
@@ -158,6 +221,9 @@ export default function OrderForm({
         return;
       }
       setDone({ id: data.orderId, total: data.total });
+      // Draft (if any) just became the real order — stop background updates.
+      if (draftTimer.current) clearTimeout(draftTimer.current);
+      draftRef.current = null;
       // Order really saved as DRAFT (server confirmed 200) → NOW record
       // InitiateCheckout server-side. Purchase is sent server-side by
       // /api/orders/confirm (CAPI), strictly after client confirmation.
@@ -206,6 +272,7 @@ export default function OrderForm({
   return (
     <form
       onSubmit={onSubmit}
+      onChange={(e) => queueDraft(e.currentTarget)}
       className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
     >
       <h2 className="text-lg font-extrabold">📝 املأ معلومات التوصيل</h2>
@@ -285,7 +352,7 @@ export default function OrderForm({
       </label>
 
       {isOffers ? (
-        <div className="mb-4 space-y-2">
+        <div className="mb-4 space-y-5">
           <p className="text-sm font-bold">🎁 اختر العرض:</p>
           {validOffers.map((o, i) => {
             const save = price * o.qty - o.price;
@@ -296,12 +363,17 @@ export default function OrderForm({
                 type="button"
                 onClick={() => setSel(i)}
                 aria-pressed={active}
-                className={`flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-right transition ${
+                className={`relative flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-right transition ${
                   active
                     ? "border-green-600 bg-green-50"
                     : "border-gray-200 bg-white"
                 }`}
               >
+                {save > 0 && (
+                  <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border border-red-200 bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700 shadow-sm">
+                    وفّر {fmt(save)} دج
+                  </span>
+                )}
                 <span className="font-extrabold">
                   {active ? "✅ " : ""}
                   {qtyLabel(o.qty)}
@@ -312,11 +384,6 @@ export default function OrderForm({
                       {o.label}
                     </span>
                   ) : null}
-                  {save > 0 && (
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">
-                      وفّر {fmt(save)} دج
-                    </span>
-                  )}
                   <span className="font-black">
                     {fmt(o.price)} دج
                   </span>

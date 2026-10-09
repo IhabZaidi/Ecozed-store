@@ -88,37 +88,55 @@ export async function POST(req: Request) {
   const ip = clientIp(req);
   const ua = req.headers.get("user-agent") || "";
   const eventId = v.eventId || `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const siteUrl = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL) || "";
 
-  // 1) Save to local Postgres
-  const inserted = await db
-    .insert(orders)
-    .values({
-      productId: product.id,
-      productSlug: product.slug,
-      productTitle: product.title,
-      qty,
-      unitPrice,
-      shipping,
-      delivery,
-      total,
-      fullName: v.fullName.trim(),
-      phone: v.phone,
-      wilayaCode: v.wilayaCode,
-      wilayaName: wName,
-      commune: v.commune.trim(),
-      address: v.address.trim(),
-      notes: v.notes,
-      status: "new",
-      fbEventId: eventId,
-      fbp: v.fbp || fbp,
-      fbc: v.fbc || fbc,
-      clientIp: ip,
-      userAgent: ua,
-    })
-    .returning({ id: orders.id });
-
-  const orderId = inserted[0]?.id ?? 0;
+  // 1) Save to local Postgres. If this browser already auto-saved a draft
+  // (same id + private key), upgrade THAT row instead of inserting a second
+  // one — one visitor = one order row, always.
+  const row = {
+    productId: product.id,
+    productSlug: product.slug,
+    productTitle: product.title,
+    qty,
+    unitPrice,
+    shipping,
+    delivery,
+    total,
+    fullName: v.fullName.trim(),
+    phone: v.phone,
+    wilayaCode: v.wilayaCode,
+    wilayaName: wName,
+    commune: v.commune.trim(),
+    address: v.address.trim(),
+    notes: v.notes,
+    status: "new",
+    fbp: v.fbp || fbp,
+    fbc: v.fbc || fbc,
+    clientIp: ip,
+    userAgent: ua,
+  };
+  let orderId: number;
+  let purchaseEventId = eventId;
+  const maybeDraft =
+    v.draftId && v.draftKey
+      ? await db
+          .select()
+          .from(orders)
+          .where(eq(orders.id, v.draftId))
+          .limit(1)
+      : [];
+  const draft = maybeDraft[0];
+  if (draft && draft.status === "draft" && draft.fbEventId === v.draftKey) {
+    await db.update(orders).set(row).where(eq(orders.id, draft.id));
+    orderId = draft.id;
+    purchaseEventId = draft.fbEventId || eventId;
+  } else {
+    const inserted = await db
+      .insert(orders)
+      .values({ ...row, fbEventId: eventId })
+      .returning({ id: orders.id });
+    orderId = inserted[0]?.id ?? 0;
+  }
 
   // 2) Server Purchase event (CAPI) — strictly after the DB insert.
   // Browser fires nothing but PageView, so each conversion is counted once.
@@ -139,7 +157,7 @@ export async function POST(req: Request) {
     contentName: product.title,
     numItems: qty,
   };
-  void sendCapi({ ...baseEvent, eventName: "Purchase", eventId }).catch(() => {});
+  void sendCapi({ ...baseEvent, eventName: "Purchase", eventId: purchaseEventId }).catch(() => {});
 
   // 3) Telegram + Google Sheet in background (never block the response)
   const notif = {
@@ -184,3 +202,4 @@ export async function POST(req: Request) {
     delivery,
   });
 }
+

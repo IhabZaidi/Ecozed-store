@@ -17,7 +17,7 @@ const STATUS_AR: Record<string, string> = {
 
 export default async function AdminHome() {
   if (!(await isAdmin())) redirect("/admin/login");
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const siteUrl = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL) || "";
 
   const allProducts = await db.select().from(products).orderBy(desc(products.id)).limit(100);
   const recentOrders = await db.select().from(orders).orderBy(desc(orders.id)).limit(50);
@@ -133,3 +133,4 @@ function LogoutBtn() {
     </form>
   );
 }
+

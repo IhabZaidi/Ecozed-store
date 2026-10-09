@@ -27,7 +27,8 @@ npm run db:push        # إنشاء الجداول
 npm run dev            # يعمل على http://localhost:3005
 ```
 
-متغيرات `.env` المطلوبة فقط: `DATABASE_URL` ،`ADMIN_PASSWORD` ،`ADMIN_SESSION_SECRET` ،`NEXT_PUBLIC_SITE_URL`.
+متغيرات `.env` المطلوبة فقط: `DATABASE_URL` ،`ADMIN_PASSWORD` ،`ADMIN_SESSION_SECRET` ،`SITE_URL`
+(خاص بالسيرفر، غير مكشوف للمتصفح).
 البكسل وتلغرام وجوجل شيت تُضبط من لوحة الإدارة (قاعدة البيانات) — متغيرات البيئة تبقى كاحتياط فقط.
 
 ## لوحة الإدارة (`/admin`)

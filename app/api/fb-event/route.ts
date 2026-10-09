@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
 
   const { fbp, fbc } = getFbpFbc(req);
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const siteUrl = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL) || "";
   const ua = req.headers.get("user-agent") || "";
 
   const r = await sendCapi({
@@ -35,3 +35,4 @@ export async function POST(req: Request) {
   });
   return NextResponse.json({ ok: true, ...r });
 }
+

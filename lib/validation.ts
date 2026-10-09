@@ -33,6 +33,9 @@ export const orderSchema = z.object({
   notes: z.string().trim().max(300).default(""),
   fbp: z.string().max(200).optional().default(""),
   fbc: z.string().max(200).optional().default(""),
+  // background draft created while typing (upgraded to a real order on submit)
+  draftId: z.coerce.number().int().optional(),
+  draftKey: z.string().max(64).optional().default(""),
   // event_id generated client-side for Pixel+CAPI dedup
   eventId: z.string().max(64).optional().default(""),
 });

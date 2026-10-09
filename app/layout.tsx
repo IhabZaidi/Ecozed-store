@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3005"
+    (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL) || "http://localhost:3005"
   ),
   title: "Ecozed Store",
   description: "اطلب الآن — الدفع عند الاستلام",
@@ -23,3 +23,4 @@ export default function RootLayout({
     </html>
   );
 }
+
