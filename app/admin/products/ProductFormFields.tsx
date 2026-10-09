@@ -66,8 +66,13 @@ export function ProductForm({ initial }: { initial?: Product | null }) {
           method: "POST",
           body: fd,
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "فشل الرفع");
+        // 500 pages on some hosts are HTML, not JSON — never show parser errors
+        const data = await res.json().catch(() => null);
+        if (!res.ok)
+          throw new Error(
+            (data as { error?: string } | null)?.error ||
+              "فشل الرفع (خطأ في الخادم، تحقق من الإعدادات)"
+          );
         // tall images come back split into seamless parts (+ blur placeholders)
         const parts = Array.isArray(data.parts) ? data.parts : [];
         for (const p of parts) {
