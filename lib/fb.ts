@@ -99,11 +99,29 @@ export async function sendCapi(a: CapiArgs) {
   };
   if (testCode) payload.test_event_code = testCode;
 
-  // Meta rejects events with no usable identifiers (subcode 2804050).
-  // Happens on cookie-less hits without a forwarded IP (e.g. localhost
-  // direct, bots) — skip instead of logging a doomed 400.
-  if (Object.keys(user_data).length === 0)
-    return { skipped: true, reason: "no-user-data" };
+  // Meta rejects events with no usable identifiers (subcode 2804050) — and a
+  // bare user-agent alone does NOT satisfy it either. Skip unless at least
+  // one strong identity signal is present (bots/cookieless probes otherwise
+  // burn a 400 on every hit). Happens on localhost direct hits without
+  // forwarded IP; production always has x-forwarded-for.
+  const STRONG_ID = [
+    "fbp",
+    "fbc",
+    "client_ip_address",
+    "ph",
+    "em",
+    "ct",
+    "st",
+    "country",
+    "external_id",
+    "zip",
+    "db",
+    "ge",
+    "ln",
+    "fn",
+  ];
+  if (!STRONG_ID.some((k) => user_data[k]))
+    return { skipped: true, reason: "no-identifier" };
 
   try {
     const res = await fetch(
