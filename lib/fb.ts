@@ -99,6 +99,12 @@ export async function sendCapi(a: CapiArgs) {
   };
   if (testCode) payload.test_event_code = testCode;
 
+  // Meta rejects events with no usable identifiers (subcode 2804050).
+  // Happens on cookie-less hits without a forwarded IP (e.g. localhost
+  // direct, bots) — skip instead of logging a doomed 400.
+  if (Object.keys(user_data).length === 0)
+    return { skipped: true, reason: "no-user-data" };
+
   try {
     const res = await fetch(
       `https://graph.facebook.com/v20.0/${pixelId}/events?access_token=${token}`,
