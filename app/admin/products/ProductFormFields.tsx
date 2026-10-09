@@ -12,24 +12,31 @@ function clean(raw: {
   h?: unknown;
   b?: unknown;
   g?: unknown;
+  // legacy API shape (pre-fix) — accepted so nothing is ever dropped again
+  width?: unknown;
+  height?: unknown;
+  blur?: unknown;
+  group?: unknown;
 }): Item | null {
   const url = String(raw?.url ?? "").trim();
   if (!url) return null;
   const item: Item = { url };
-  const w = Number(raw?.w);
-  const h = Number(raw?.h);
+  const w = Number(raw?.w ?? raw?.width);
+  const h = Number(raw?.h ?? raw?.height);
   if (w > 0 && h > 0) {
     item.w = Math.round(w);
     item.h = Math.round(h);
   }
+  const b = raw?.b ?? raw?.blur;
   if (
-    typeof raw?.b === "string" &&
-    raw.b.startsWith("data:image/") &&
-    raw.b.length < 12000
+    typeof b === "string" &&
+    b.startsWith("data:image/") &&
+    b.length < 12000
   )
-    item.b = raw.b;
-  if (typeof raw?.g === "string" && raw.g.length > 0 && raw.g.length < 48)
-    item.g = raw.g;
+    item.b = b;
+  const g = raw?.g ?? raw?.group;
+  if (typeof g === "string" && g.length > 0 && g.length < 48)
+    item.g = g;
   return item;
 }
 

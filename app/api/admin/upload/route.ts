@@ -28,10 +28,10 @@ async function lqip(buf: Buffer): Promise<string> {
 
 type Part = {
   url: string;
-  width: number | null;
-  height: number | null;
-  blur: string;
-  group?: string;
+  w: number | null;
+  h: number | null;
+  b: string;
+  g?: string;
 };
 
 /**
@@ -89,8 +89,10 @@ export async function POST(req: Request) {
     const name = `${base}.webp`;
     const url = await persist(name, resized);
     return NextResponse.json({
+      // keys match the ProductImage schema exactly (url/w/h/b/g) —
+      // a mismatch here silently drops dims and breaks CLS downstream.
       parts: [
-        { url, width: W, height: H, blur: await lqip(resized) },
+        { url, w: W, h: H, b: await lqip(resized) },
       ] satisfies Part[],
       bytes: resized.length,
       split: false,
@@ -114,10 +116,10 @@ export async function POST(req: Request) {
     const url = await persist(name, out);
     parts.push({
       url,
-      width: W,
-      height: h,
-      blur: await lqip(out),
-      group,
+      w: W,
+      h,
+      b: await lqip(out),
+      g: group,
     });
     bytes += out.length;
   }
