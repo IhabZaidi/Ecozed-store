@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { jwtVerify } from "jose";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 import { put } from "@vercel/blob";
+import { requireAdmin } from "@/lib/admin-guard";
 
 export const runtime = "nodejs";
 // Image processing + Blob upload can exceed the 10s Hobby default.
@@ -18,24 +18,6 @@ const SPLIT_THRESHOLD_PX = 1800;
 const SLICE_HEIGHT_PX = 900;
 const MAX_SLICES = 6;
 
-async function requireAdmin(req: Request) {
-  const cookie = req.headers.get("cookie") || "";
-  const m = cookie.match(/(?:^|;\s*)admin_session=([^;]+)/);
-  if (!m) return false;
-  try {
-    await jwtVerify(
-      m[1],
-      new TextEncoder().encode(
-        process.env.ADMIN_SESSION_SECRET || "dev-secret-change-me-please-1234"
-      )
-    );
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** ~300-byte blur-up placeholder (LQIP) shown while the full file loads. */
 async function lqip(buf: Buffer): Promise<string> {
   const tiny = await sharp(buf)
     .resize({ width: 16 })

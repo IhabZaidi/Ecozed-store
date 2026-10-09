@@ -18,12 +18,16 @@ export function SettingsTabs({
   initialTab,
   saved,
   tgtest,
+  imported,
+  importFail,
   s,
   ship,
 }: {
   initialTab: string;
   saved: boolean;
   tgtest: string;
+  imported: string;
+  importFail: boolean;
   s: Record<string, string>;
   ship: ShippingTable;
 }) {
@@ -48,6 +52,16 @@ export function SettingsTabs({
       {tgtest === "fail" && (
         <p className="mt-4 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-700">
           فشل الإرسال ❌ تحقق من التوكن والـ Chat ID ثم احفظ وحاول مجددًا
+        </p>
+      )}
+      {imported && (
+        <p className="mt-4 rounded-xl bg-green-50 px-4 py-2 text-sm font-bold text-green-700">
+          تم استيراد أسعار {imported} ولاية ✅
+        </p>
+      )}
+      {importFail && (
+        <p className="mt-4 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-700">
+          ملف غير صالح ❌ استعمل ملف النسخة المصدرة من هنا
         </p>
       )}
 
@@ -273,6 +287,37 @@ export function SettingsTabs({
             حفظ الإعدادات 💾
           </button>
         </form>
+
+        {/* Backup / restore: portable JSON, no retyping on a new server */}
+        <div className="mt-4 flex gap-2">
+          <a
+            href="/api/admin/shipping/export"
+            download
+            className="flex-1 rounded-2xl border px-4 py-3 text-center text-sm font-extrabold"
+          >
+            ⬇️ تصدير نسخة
+          </a>
+          <form
+            action="/api/admin/shipping/import"
+            method="post"
+            encType="multipart/form-data"
+            className="flex flex-1 items-center gap-2 rounded-2xl border px-3 py-2"
+          >
+            <input
+              type="file"
+              name="file"
+              accept="application/json,.json"
+              required
+              className="w-full text-xs"
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-extrabold text-white"
+            >
+              ⬆️ استيراد
+            </button>
+          </form>
+        </div>
       </div>
       )}
 

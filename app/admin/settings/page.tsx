@@ -7,10 +7,10 @@ import { SettingsTabs } from "./SettingsTabs";
 export default async function AdminSettings({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string; tgtest?: string; tab?: string }>;
+  searchParams: Promise<{ saved?: string; tgtest?: string; tab?: string; imported?: string; import?: string }>;
 }) {
   if (!(await isAdmin())) redirect("/admin/login");
-  const { saved, tgtest, tab } = await searchParams;
+  const { saved, tgtest, tab, imported, import: importFail } = await searchParams;
   const s = await getRawSettings([
     "fb_pixel_id",
     "fb_capi_token",
@@ -36,6 +36,8 @@ export default async function AdminSettings({
         initialTab={tab ?? "pixel"}
         saved={saved === "1"}
         tgtest={tgtest ?? ""}
+        imported={imported ?? ""}
+        importFail={importFail === "fail"}
         s={s}
         ship={ship}
       />
