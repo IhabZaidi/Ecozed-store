@@ -82,7 +82,7 @@ export default function LandingMinimal({ product: p, pixelId, offers, shipTable 
           <div
             key={b.key}
             className={
-              bi === 0 ? "overflow-hidden" : "cv-auto mt-3 overflow-hidden"
+              bi === 0 ? "overflow-hidden" : "cv-auto overflow-hidden"
             }
           >
             {b.items.map((img, i) =>
