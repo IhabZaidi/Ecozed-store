@@ -142,7 +142,7 @@ export async function POST(req: Request) {
   // Browser fires nothing but PageView, so each conversion is counted once.
   // Extra match signals (city/state/country) raise Meta's match-quality score.
   const baseEvent = {
-    eventSourceUrl: siteUrl ? `${siteUrl}/${product.slug}` : "",
+    eventSourceUrl: siteUrl ? `${siteUrl.replace(/\/+$/, "")}/${product.slug}` : "",
     fbp: v.fbp || fbp || undefined,
     fbc: v.fbc || fbc || undefined,
     ip: ip || undefined,

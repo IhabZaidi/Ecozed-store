@@ -7,14 +7,39 @@ import Script from "next/script";
  * ViewContent, InitiateCheckout and Purchase are sent server-side via the
  * Conversions API (never blocked by ad-blockers, no double counting).
  *
+ * CAPI coverage: the browser PageView carries a per-visit eventID AND the
+ * same ID is posted to /api/fb-event, which fires the server twin. Meta
+ * dedups on (event_name + event_id), so the pair counts once and PageView
+ * CAPI coverage goes to ~100% (fixes the "57 fewer server events" flag).
+ * Ad-blocked visitors contribute the server event alone — still exactly one.
+ *
  * Perf: loads with strategy="lazyOnload" (browser idle, after LCP) instead
  * of competing with the hero image. Lighthouse flagged fbevents.js as
  * ~41KB unused-JS + 143ms bootup on the critical path — idle-loading moves
  * it (and the 96KB signals/config it pulls) fully out of the LCP window.
- * Server CAPI ViewContent already fires at request time, so no signal lost.
+ * The CAPI twins (PageView + ViewContent) fire from here at idle with full
+ * identifiers, so no signal is lost by deferring.
  */
-export default function Pixel({ pixelId }: { pixelId: string }) {
+export default function Pixel({ pixelId, slug, price }: { pixelId: string; slug: string; price?: number }) {
   if (!pixelId) return null;
+
+  // ViewContent twin: the Server Component can't send it (no fbp/fbc/IP
+  // without killing ISR caching, and identifier-less CAPI events are
+  // skipped). Fired here at idle instead — first-party fetch carries the
+  // cookies + IP + UA, so it always has identifiers. No browser twin exists
+  // for ViewContent, so no dedup key is needed — each view is exactly one.
+  const viewContentFetch =
+    typeof price === "number" && price > 0
+      ? `
+      try {
+        fetch('/api/fb-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventName: 'ViewContent', eventId: (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)), slug: ${JSON.stringify(slug)}, value: ${Math.round(price)} }),
+          keepalive: true
+        }).catch(function(){});
+      } catch (e) {}`
+      : "";
 
   return (
     <>
@@ -34,7 +59,18 @@ export default function Pixel({ pixelId }: { pixelId: string }) {
     s.parentNode.insertBefore(t,s)}(window, document,'script',
     'https://connect.facebook.net/en_US/fbevents.js');
     fbq('init', '${pixelId}');
-    fbq('track', 'PageView');`,
+    (function(){
+      var eid = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      fbq('track', 'PageView', {}, { eventID: eid });
+      try {
+        fetch('/api/fb-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eventName: 'PageView', eventId: eid, slug: ${JSON.stringify(slug)} }),
+          keepalive: true
+        }).catch(function(){});
+      } catch (e) {}
+    })();${viewContentFetch}`,
         }}
       />
       {/* noscript fallback for PageView */}

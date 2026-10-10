@@ -1,6 +1,11 @@
 import { createHash } from "crypto";
 import { getFbConfig } from "./settings";
 
+/** Graph API version for CAPI. v20.0 was REMOVED by Meta on 2026-09-24
+ * ( v21.0 goes 2027-01-21); v25.0 is supported until 2028. Bump this single
+ * const when Meta retires it — never hardcode the version at call sites. */
+const CAPI_VERSION = "v25.0";
+
 function sha256(v: string) {
   return createHash("sha256").update(v.trim().toLowerCase()).digest("hex");
 }
@@ -129,7 +134,7 @@ export async function sendCapi(a: CapiArgs) {
 
   try {
     const res = await fetch(
-      `https://graph.facebook.com/v20.0/${pixelId}/events?access_token=${token}`,
+      `https://graph.facebook.com/${CAPI_VERSION}/${pixelId}/events?access_token=${token}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

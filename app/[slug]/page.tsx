@@ -7,7 +7,6 @@ import { db } from "@/lib/db";
 import { products, type ProductImage, type ProductOffer } from "@/lib/schema";
 import { getFbConfig, getShipping, getClarityId } from "@/lib/settings";
 import { imgUrl, imgBlur, imgDims, groupImages } from "@/lib/image";
-import { sendCapi } from "@/lib/fb";
 import Pixel from "./Pixel";
 import Clarity from "./Clarity";
 import LandingMinimal from "./LandingMinimal";
@@ -81,23 +80,6 @@ export default async function LandingPage({
   const galleryBlocks = groupImages(images.slice(1));
   const features = (p.features as string[] | null) ?? [];
   const pct = discountPct(p.price, p.oldPrice);
-  const siteUrl = (process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL) || "";
-  // Per-request unique ID for the server ViewContent (CAPI) event.
-  // Impure by necessity (a Server Component renders once per request).
-  // eslint-disable-next-line react-hooks/purity
-  const eventId = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
-  // Server-side ViewContent (CAPI). Fire-and-forget: never block the HTML.
-  void sendCapi({
-    eventName: "ViewContent",
-    eventId,
-    eventSourceUrl: siteUrl ? `${siteUrl}/${slug}` : "",
-    value: p.price,
-    currency: "DZD",
-    contentIds: [slug],
-    contentName: p.title,
-    numItems: 1,
-  }).catch(() => {});
 
   // Config + shipping in parallel (were sequential: 2 DB round-trips on TTFB).
   // Lighthouse LCP breakdown: 3080ms resourceLoadDelay starts at document;
@@ -124,7 +106,7 @@ export default async function LandingPage({
 
   return (
     <>
-      <Pixel pixelId={pixelId} />
+      <Pixel pixelId={pixelId} slug={slug} price={p.price} />
       <Clarity clarityId={clarityId} />
 
       <main className="mx-auto max-w-xl px-4 pb-28">

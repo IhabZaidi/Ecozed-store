@@ -227,6 +227,8 @@ export default function OrderForm({
       // Order really saved as DRAFT (server confirmed 200) → NOW record
       // InitiateCheckout server-side. Purchase is sent server-side by
       // /api/orders/confirm (CAPI), strictly after client confirmation.
+      // Identity signals included for Event Match Quality (hashed server-side).
+      const wName = WILAYAS.find((w) => w.code === body.wilayaCode)?.ar ?? "";
       fetch("/api/fb-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -235,7 +237,14 @@ export default function OrderForm({
           eventId: uid(),
           slug,
           value: data.total,
+          phone: body.phone,
+          city: body.commune.trim(),
+          state: wName,
+          country: "dz",
         }),
+        // Buyer may close the tab right after success — keepalive lets the
+        // event finish (same as the Pixel twins).
+        keepalive: true,
       }).catch(() => {});
       // Notify the page: it hides everything behind a centered success view.
       window.dispatchEvent(

@@ -90,8 +90,8 @@ export function SettingsTabs({
             <p className="font-extrabold">📊 الأحداث التي نجمعها عبر البكسل:</p>
             <ul className="mt-2 space-y-1.5 text-gray-700">
               <li>
-                <b>PageView</b> (المتصفح) — كل زيارة لصفحة منتج، من كود
-                فيسبوك الرسمي.
+                <b>PageView</b> (المتصفح + السيرفر بنفس المعرف) — كل زيارة
+                لصفحة منتج، تُحتسب مرة واحدة بفضل المطابقة (deduplication).
               </li>
               <li>
                 <b>ViewContent</b> (السيرفر) — مشاهدة منتج: الاسم + السعر +

@@ -96,7 +96,7 @@ export default function LandingMinimal({ product: p, pixelId, clarityId, offers,
 
   return (
     <>
-      <Pixel pixelId={pixelId} />
+      <Pixel pixelId={pixelId} slug={p.slug} price={p.price} />
       <Clarity clarityId={clarityId} />
 
       <main className="mx-auto max-w-xl pb-28">
