@@ -15,6 +15,7 @@ export default async function AdminSettings({
     "fb_pixel_id",
     "fb_capi_token",
     "fb_test_code",
+    "clarity_id",
     "tg_bot_token",
     "tg_chat_id",
     "gs_spreadsheet_id",

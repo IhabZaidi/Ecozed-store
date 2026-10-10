@@ -15,6 +15,8 @@ export async function getTelegramConfig() {
 }
 
 export async function sendTelegram(text: string) {
+  // Same local kill-switch as CAPI (see lib/fb.ts).
+  if (process.env.DISABLE_OUTBOUND === "1") return { skipped: true };
   const { token, chatId } = await getTelegramConfig();
   if (!token || !chatId) return { skipped: true };
   try {

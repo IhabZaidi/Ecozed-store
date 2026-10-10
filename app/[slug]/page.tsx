@@ -1,17 +1,29 @@
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { products, type ProductImage, type ProductOffer } from "@/lib/schema";
-import { getFbConfig, getShipping } from "@/lib/settings";
+import { getFbConfig, getShipping, getClarityId } from "@/lib/settings";
 import { imgUrl, imgBlur, imgDims, groupImages } from "@/lib/image";
 import { sendCapi } from "@/lib/fb";
 import Pixel from "./Pixel";
-import OrderForm from "./OrderForm";
+import Clarity from "./Clarity";
 import LandingMinimal from "./LandingMinimal";
-import DoneOverlay from "./DoneOverlay";
-import StickyCta from "./StickyCta";
+
+// Same code-split as LandingMinimal: form/CTA/overlay hydrate after LCP.
+const OrderForm = dynamic(() => import("./OrderForm"), {
+  loading: () => (
+    <div
+      aria-hidden
+      className="animate-pulse rounded-2xl border border-gray-200 bg-gray-50 p-5"
+      style={{ minHeight: 480 }}
+    />
+  ),
+});
+const DoneOverlay = dynamic(() => import("./DoneOverlay"));
+const StickyCta = dynamic(() => import("./StickyCta"));
 
 export const revalidate = 60; // ISR: fast cached HTML, fresh prices within a minute
 export const dynamicParams = true;
@@ -87,8 +99,14 @@ export default async function LandingPage({
     numItems: 1,
   }).catch(() => {});
 
-  const pixelId = (await getFbConfig()).pixelId;
-  const shipTable = await getShipping();
+  // Config + shipping in parallel (were sequential: 2 DB round-trips on TTFB).
+  // Lighthouse LCP breakdown: 3080ms resourceLoadDelay starts at document;
+  // every ms of server wait pushes the hero image request back.
+  const [{ pixelId }, shipTable, clarityId] = await Promise.all([
+    getFbConfig().then((c) => ({ pixelId: c.pixelId })),
+    getShipping(),
+    getClarityId(),
+  ]);
   const offers = (p.offers as ProductOffer[] | null) ?? [];
 
   // Minimal landing: pictures + button + order form only. No price, no info.
@@ -97,6 +115,7 @@ export default async function LandingPage({
       <LandingMinimal
         product={p}
         pixelId={pixelId}
+        clarityId={clarityId}
         offers={offers}
         shipTable={shipTable}
       />
@@ -106,6 +125,7 @@ export default async function LandingPage({
   return (
     <>
       <Pixel pixelId={pixelId} />
+      <Clarity clarityId={clarityId} />
 
       <main className="mx-auto max-w-xl px-4 pb-28">
         {/* Title */}
@@ -138,6 +158,8 @@ export default async function LandingPage({
               height={800}
               priority
               fetchPriority="high"
+              decoding="async"
+              unoptimized
               sizes="(max-width: 640px) 100vw, 640px"
               className="aspect-square w-full rounded-2xl object-cover"
               {...(heroBlur
@@ -174,6 +196,8 @@ export default async function LandingPage({
                   width={800}
                   height={800}
                   loading="lazy"
+                  fetchPriority="low"
+                  decoding="async"
                   sizes="(max-width: 640px) 100vw, 640px"
                   className="aspect-square w-full object-cover"
                   {...(blur
@@ -200,6 +224,8 @@ export default async function LandingPage({
                     width={dims.w}
                     height={dims.h}
                     loading="lazy"
+                    fetchPriority="low"
+                    decoding="async"
                     sizes="(max-width: 640px) 100vw, 640px"
                     className="-mb-px block h-auto w-full"
                     {...(blur

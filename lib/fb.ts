@@ -60,6 +60,10 @@ type CapiArgs = {
 
 /** Server-side Facebook Conversions API sender. No-op if pixel/token missing. */
 export async function sendCapi(a: CapiArgs) {
+  // Local testing kill-switch: orders still validate + save normally,
+  // but nothing leaves the machine (set DISABLE_OUTBOUND=1 in local .env).
+  if (process.env.DISABLE_OUTBOUND === "1")
+    return { skipped: true, reason: "disabled" };
   const { pixelId, capiToken: token, testCode } = await getFbConfig();
   if (!pixelId || !token) return { skipped: true };
 

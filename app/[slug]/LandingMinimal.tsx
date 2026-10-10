@@ -1,15 +1,31 @@
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import type { Product, ProductImage, ProductOffer } from "@/lib/schema";
 import type { ShippingTable } from "@/lib/settings";
 import { imgUrl, imgDims, imgBlur, groupImages } from "@/lib/image";
 import Pixel from "./Pixel";
-import OrderForm from "./OrderForm";
-import DoneOverlay from "./DoneOverlay";
-import StickyCta from "./StickyCta";
+import Clarity from "./Clarity";
+
+// Below-fold interactivity ships in separate chunks (not in the initial JS).
+// Lighthouse: OrderForm was ~25KB unused-JS + parse/compile on the critical
+// path. Dynamic = separate bundle, hero paints first, form hydrates after.
+// Loading fallback reserves height so there is zero CLS when it swaps in.
+const OrderForm = dynamic(() => import("./OrderForm"), {
+  loading: () => (
+    <div
+      aria-hidden
+      className="animate-pulse rounded-2xl border border-gray-200 bg-gray-50 p-5"
+      style={{ minHeight: 480 }}
+    />
+  ),
+});
+const StickyCta = dynamic(() => import("./StickyCta"));
+const DoneOverlay = dynamic(() => import("./DoneOverlay"));
 
 type Props = {
   product: Product;
   pixelId: string;
+  clarityId: string;
   offers: ProductOffer[];
   shipTable: ShippingTable;
 };
@@ -26,7 +42,7 @@ type Props = {
  * - Every image carries a ~300B blur placeholder: instant paint, sharp swap.
  * - Below-fold blocks use content-visibility: browser skips their layout/paint.
  */
-export default function LandingMinimal({ product: p, pixelId, offers, shipTable }: Props) {
+export default function LandingMinimal({ product: p, pixelId, clarityId, offers, shipTable }: Props) {
   const images = (p.images as ProductImage[] | null) ?? [];
   const cta = p.ctaText || "اطلب الآن — الدفع عند الاستلام";
   const blocks = groupImages(images);
@@ -41,7 +57,10 @@ export default function LandingMinimal({ product: p, pixelId, offers, shipTable 
     // -mb-px: scaled heights land on fractional pixels (e.g. 516.5px),
     // which opens 1px white seams between slices — overlap instead.
     if (dims) {
-      // Exact intrinsic ratio → full-width, zero crop, zero distortion, zero CLS
+      // Exact intrinsic ratio → full-width, zero crop, zero distortion, zero CLS.
+      // unoptimized: uploads are already compressed WebP — serving the blob
+      // direct skips the /_next/image optimizer hop (Lighthouse: hero took
+      // 584ms for 12KB through the optimizer). Blob CDN is faster for LCP.
       return (
         <Image
           key={key}
@@ -50,8 +69,10 @@ export default function LandingMinimal({ product: p, pixelId, offers, shipTable 
           width={dims.w}
           height={dims.h}
           priority={hero}
-          fetchPriority={hero ? "high" : undefined}
+          fetchPriority={hero ? "high" : "low"}
           loading={hero ? undefined : "lazy"}
+          decoding="async"
+          unoptimized
           sizes="(max-width: 640px) 100vw, 640px"
           className="-mb-px block h-auto w-full"
           {...blurProps}
@@ -76,6 +97,7 @@ export default function LandingMinimal({ product: p, pixelId, offers, shipTable 
   return (
     <>
       <Pixel pixelId={pixelId} />
+      <Clarity clarityId={clarityId} />
 
       <main className="mx-auto max-w-xl pb-28">
         {blocks.map((b, bi) => (

@@ -53,6 +53,17 @@ export async function getRawSettings(keys: string[]) {
   return out;
 }
 
+/**
+ * Microsoft Clarity project ID. DB first, env fallback.
+ * Empty = Clarity never loads (zero perf cost, zero requests).
+ */
+export async function getClarityId(): Promise<string> {
+  const rows = await loadRows();
+  return (
+    rows["clarity_id"] || process.env.NEXT_PUBLIC_CLARITY_ID || ""
+  ).trim();
+}
+
 export type ShippingTable = {
   homeDef: number;
   stopDef: number;

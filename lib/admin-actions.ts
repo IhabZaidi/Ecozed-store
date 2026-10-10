@@ -239,7 +239,7 @@ async function upsertSetting(key: string, value: string) {
     });
 }
 
-const PIXEL_KEYS = ["fb_pixel_id", "fb_capi_token", "fb_test_code"] as const;
+const PIXEL_KEYS = ["fb_pixel_id", "fb_capi_token", "fb_test_code", "clarity_id"] as const;
 const TELEGRAM_KEYS = ["tg_bot_token", "tg_chat_id"] as const;
 const SHEETS_KEYS = [
   "gs_spreadsheet_id",

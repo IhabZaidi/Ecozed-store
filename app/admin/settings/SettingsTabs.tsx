@@ -164,6 +164,24 @@ export function SettingsTabs({
               </span>
             </label>
 
+            <label className="block rounded-2xl border border-blue-200 bg-blue-50 p-4">
+              <span className="mb-1 block text-sm font-bold">
+                🔍 Microsoft Clarity ID (اختياري)
+              </span>
+              <input
+                name="clarity_id"
+                dir="ltr"
+                defaultValue={s["clarity_id"]}
+                placeholder="مثال: t1v9x8y7z6"
+                autoComplete="off"
+                className="w-full rounded-xl border bg-white px-4 py-3 font-mono"
+              />
+              <span className="mt-1 block text-xs text-gray-500">
+                من clarity.microsoft.com ← مشروعك ← Setup. فارغ = لا يتحمّل
+                شيء (صفر تأثير على السرعة). يُحمَّل بعد LCP فقط.
+              </span>
+            </label>
+
             <button className="w-full rounded-2xl bg-black px-6 py-4 font-extrabold text-white">
               حفظ الإعدادات 💾
             </button>

@@ -15,14 +15,34 @@ export default function StickyCta({
   const [past, setPast] = useState(false);
 
   useEffect(() => {
-    const el = document.getElementById("order");
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setPast(entry.isIntersecting),
-      { threshold: 0.12 }
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
+    if (typeof IntersectionObserver === "undefined") return;
+    let obs: IntersectionObserver | null = null;
+    let mo: MutationObserver | null = null;
+    const watch = (el: Element) => {
+      obs = new IntersectionObserver(
+        ([entry]) => setPast(entry.isIntersecting),
+        { threshold: 0.12 }
+      );
+      obs.observe(el);
+    };
+    // OrderForm is code-split and mounts after LCP — it may not exist yet.
+    const existing = document.getElementById("order");
+    if (existing) {
+      watch(existing);
+    } else if (typeof MutationObserver !== "undefined") {
+      mo = new MutationObserver(() => {
+        const el = document.getElementById("order");
+        if (el) {
+          watch(el);
+          mo?.disconnect();
+        }
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+    }
+    return () => {
+      obs?.disconnect();
+      mo?.disconnect();
+    };
   }, []);
 
   return (

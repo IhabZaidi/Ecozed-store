@@ -4,6 +4,9 @@ const nextConfig: NextConfig = {
   // Speed: strip console in prod, compress, no powered-by header
   compress: true,
   poweredByHeader: false,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
   images: {
     // modern formats first = smaller bytes for the same quality
     formats: ["image/avif", "image/webp"],
