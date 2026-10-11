@@ -1,0 +1,1 @@
+ALTER TABLE "products" ADD COLUMN "show_top_bar" boolean DEFAULT true;

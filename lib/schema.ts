@@ -46,6 +46,11 @@ export const products = pgTable("products", {
   reviewsCount: integer("reviews_count").default(127),
   ctaText: text("cta_text").default("اطلب الآن — الدفع عند الاستلام"),
   active: boolean("active").default(true),
+  // COD trust bar ("open the parcel, check, then pay") at the very top.
+  // Per-product toggle in the admin form. Default ON; NULL (legacy rows
+  // created before the column existed) also renders it — only explicit
+  // false hides it, so old products keep the bar after migrating.
+  showTopBar: boolean("show_top_bar").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

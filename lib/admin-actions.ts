@@ -200,6 +200,7 @@ export async function saveProduct(formData: FormData) {
       String(formData.get("ctaText") || "").trim() ||
       "اطلب الآن — الدفع عند الاستلام",
     active: formData.get("active") === "on",
+    showTopBar: formData.get("showTopBar") === "on",
     updatedAt: new Date(),
   };
   if (!values.price || values.price < 100)

@@ -9,6 +9,7 @@ import { getFbConfig, getShipping, getClarityId } from "@/lib/settings";
 import { imgUrl, imgBlur, imgDims, groupImages } from "@/lib/image";
 import Pixel from "./Pixel";
 import Clarity from "./Clarity";
+import TopBar from "./TopBar";
 import LandingMinimal from "./LandingMinimal";
 
 // Same code-split as LandingMinimal: form/CTA/overlay hydrate after LCP.
@@ -109,6 +110,7 @@ export default async function LandingPage({
       <Pixel pixelId={pixelId} slug={slug} price={p.price} />
       <Clarity clarityId={clarityId} />
 
+      {p.showTopBar !== false && <TopBar />}
       <main className="mx-auto max-w-xl px-4 pb-28">
         {/* Title */}
         <header className="pt-4 text-center">

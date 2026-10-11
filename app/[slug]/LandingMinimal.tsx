@@ -5,6 +5,7 @@ import type { ShippingTable } from "@/lib/settings";
 import { imgUrl, imgDims, imgBlur, groupImages } from "@/lib/image";
 import Pixel from "./Pixel";
 import Clarity from "./Clarity";
+import TopBar from "./TopBar";
 
 // Below-fold interactivity ships in separate chunks (not in the initial JS).
 // Lighthouse: OrderForm was ~25KB unused-JS + parse/compile on the critical
@@ -99,6 +100,7 @@ export default function LandingMinimal({ product: p, pixelId, clarityId, offers,
       <Pixel pixelId={pixelId} slug={p.slug} price={p.price} />
       <Clarity clarityId={clarityId} />
 
+      {p.showTopBar !== false && <TopBar />}
       <main className="mx-auto max-w-xl pb-28">
         {blocks.map((b, bi) => (
           <div
