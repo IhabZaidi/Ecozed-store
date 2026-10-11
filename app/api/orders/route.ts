@@ -5,7 +5,7 @@ import { orders, products } from "@/lib/schema";
 import { orderSchema } from "@/lib/validation";
 import { wilayaName } from "@/lib/wilayas";
 import { getShipping, shippingFor, deliveryLabel } from "@/lib/settings";
-import { sendCapi, getFbpFbc, clientIp } from "@/lib/fb";
+import { sendCapi, getFbpFbc, clientIp, splitName } from "@/lib/fb";
 import { sendTelegram, orderTelegramText } from "@/lib/telegram";
 import { appendOrderToSheet } from "@/lib/sheets";
 
@@ -139,8 +139,9 @@ export async function POST(req: Request) {
   }
 
   // 2) Server Purchase event (CAPI) — strictly after the DB insert.
-  // Browser fires nothing but PageView, so each conversion is counted once.
-  // Extra match signals (city/state/country) raise Meta's match-quality score.
+  // The browser fires its twin with the SAME purchaseEventId (returned below),
+  // so Meta dedups the pair into one. fn/ln + external_id maximize matching.
+  const [firstName, lastName] = splitName(v.fullName);
   const baseEvent = {
     eventSourceUrl: siteUrl ? `${siteUrl.replace(/\/+$/, "")}/${product.slug}` : "",
     fbp: v.fbp || fbp || undefined,
@@ -148,6 +149,8 @@ export async function POST(req: Request) {
     ip: ip || undefined,
     userAgent: ua || undefined,
     phone: v.phone,
+    firstName: firstName || undefined,
+    lastName: lastName || undefined,
     city: v.commune.trim(),
     state: wName,
     country: "dz",
@@ -200,6 +203,10 @@ export async function POST(req: Request) {
     shipping,
     subtotal,
     delivery,
+    // Canonical event ID the server Purchase used (draft key when a draft was
+    // upgraded, submit eventId otherwise). The browser fires its Purchase twin
+    // with THIS id — identical IDs are how Meta dedups the pair into one.
+    eventId: purchaseEventId,
   });
 }
 

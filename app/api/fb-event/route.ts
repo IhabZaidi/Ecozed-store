@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { sendCapi, getFbpFbc, clientIp } from "@/lib/fb";
+import { sendCapi, getFbpFbc, clientIp, splitName } from "@/lib/fb";
 
 const schema = z.object({
   eventName: z.enum(["PageView", "InitiateCheckout", "Lead"]),
@@ -11,6 +11,7 @@ const schema = z.object({
   // InitiateCheckout fires right after a validated order save, so the buyer
   // data is available — same match quality as Purchase.
   phone: z.string().max(32).optional().default(""),
+  fullName: z.string().max(80).optional().default(""),
   city: z.string().max(80).optional().default(""),
   state: z.string().max(80).optional().default(""),
   country: z.string().max(8).optional().default(""),
@@ -38,6 +39,7 @@ export async function POST(req: Request) {
   // double-slash event_source_url and hurt URL matching quality.
   const pageUrl = siteUrl ? `${siteUrl.replace(/\/+$/, "")}/${parsed.data.slug}` : "";
   const ua = req.headers.get("user-agent") || "";
+  const [firstName, lastName] = splitName(parsed.data.fullName);
 
   const r = await sendCapi({
     eventName: parsed.data.eventName,
@@ -48,6 +50,8 @@ export async function POST(req: Request) {
     ip: clientIp(req) || undefined,
     userAgent: ua || undefined,
     phone: parsed.data.phone || undefined,
+    firstName: firstName || undefined,
+    lastName: lastName || undefined,
     city: parsed.data.city || undefined,
     state: parsed.data.state || undefined,
     country: parsed.data.country || undefined,

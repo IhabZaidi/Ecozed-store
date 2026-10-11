@@ -13,32 +13,29 @@ import Script from "next/script";
  * CAPI coverage goes to ~100% (fixes the "57 fewer server events" flag).
  * Ad-blocked visitors contribute the server event alone — still exactly one.
  *
+ * First-visit matching: most buyers visit ONCE, so the server twins wait for
+ * the `_fbp` cookie (written by fbevents.js) before firing — up to ~4s of
+ * 200ms polls. Without this, one-time visitors' twins would arrive fbp-less
+ * and match worse. If the cookie never appears (blocked/slow), the twins
+ * fire anyway with IP + UA, exactly as before — never lost, just leaner.
+ *
  * Perf: loads with strategy="lazyOnload" (browser idle, after LCP) instead
  * of competing with the hero image. Lighthouse flagged fbevents.js as
  * ~41KB unused-JS + 143ms bootup on the critical path — idle-loading moves
  * it (and the 96KB signals/config it pulls) fully out of the LCP window.
- * The CAPI twins (PageView + ViewContent) fire from here at idle with full
- * identifiers, so no signal is lost by deferring.
  */
 export default function Pixel({ pixelId, slug, price }: { pixelId: string; slug: string; price?: number }) {
   if (!pixelId) return null;
 
-  // ViewContent twin: the Server Component can't send it (no fbp/fbc/IP
+  // ViewContent twin body: the Server Component can't send it (no fbp/fbc/IP
   // without killing ISR caching, and identifier-less CAPI events are
-  // skipped). Fired here at idle instead — first-party fetch carries the
+  // skipped). Built here at idle instead — first-party fetch carries the
   // cookies + IP + UA, so it always has identifiers. No browser twin exists
   // for ViewContent, so no dedup key is needed — each view is exactly one.
-  const viewContentFetch =
+  // (Fired from fire() below, after the _fbp wait — same as PageView twin.)
+  const viewContentPost =
     typeof price === "number" && price > 0
-      ? `
-      try {
-        fetch('/api/fb-event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventName: 'ViewContent', eventId: (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)), slug: ${JSON.stringify(slug)}, value: ${Math.round(price)} }),
-          keepalive: true
-        }).catch(function(){});
-      } catch (e) {}`
+      ? `post(JSON.stringify({ eventName: 'ViewContent', eventId: (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)), slug: ${JSON.stringify(slug)}, value: ${Math.round(price)} }));`
       : "";
 
   return (
@@ -62,15 +59,37 @@ export default function Pixel({ pixelId, slug, price }: { pixelId: string; slug:
     (function(){
       var eid = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
       fbq('track', 'PageView', {}, { eventID: eid });
+      function post(body) {
+        try {
+          fetch('/api/fb-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: body,
+            keepalive: true
+          }).catch(function(){});
+        } catch (e) {}
+      }
+      var sent = false;
+      function fire() {
+        if (sent) return;
+        sent = true;
+        post(JSON.stringify({ eventName: 'PageView', eventId: eid, slug: ${JSON.stringify(slug)} }));
+        ${viewContentPost}
+      }
+      // Instant bouncers (<1s on page): pending timers die with the page, so
+      // flush unsent twins here with whatever identifiers exist (keepalive
+      // delivers on unload). Engaged visits get the fbp-enriched send above.
       try {
-        fetch('/api/fb-event', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ eventName: 'PageView', eventId: eid, slug: ${JSON.stringify(slug)} }),
-          keepalive: true
-        }).catch(function(){});
+        window.addEventListener('pagehide', function() { fire(); });
       } catch (e) {}
-    })();${viewContentFetch}`,
+      var tries = 0;
+      (function wait() {
+        var hasFbp = false;
+        try { hasFbp = /(?:^|;\\s*)_fbp=/.test(document.cookie); } catch (e) {}
+        if (hasFbp || ++tries > 20) { fire(); return; }
+        setTimeout(wait, 200);
+      })();
+    })();`,
         }}
       />
       {/* noscript fallback for PageView */}

@@ -44,6 +44,17 @@ export function clientIp(req: Request) {
   );
 }
 
+/**
+ * Full name → [first, last] for fn/ln matching. Arabic names hash as-is
+ * (no case to normalize). Single-token names yield ["token", ""].
+ */
+export function splitName(fullName: string): [string, string] {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return ["", ""];
+  if (parts.length === 1) return [parts[0], ""];
+  return [parts[0], parts[parts.length - 1]];
+}
+
 type CapiArgs = {
   eventName: "PageView" | "ViewContent" | "InitiateCheckout" | "Purchase" | "Lead";
   eventId: string;
@@ -53,6 +64,8 @@ type CapiArgs = {
   ip?: string;
   userAgent?: string;
   phone?: string;
+  firstName?: string;
+  lastName?: string;
   city?: string;
   state?: string;
   country?: string;
@@ -80,6 +93,12 @@ export async function sendCapi(a: CapiArgs) {
   // hash contact/location data for matching (do NOT send raw)
   const e164 = a.phone ? toE164DZ(a.phone) : "";
   if (e164) user_data.ph = [sha256(e164)];
+  // external_id: stable per-customer key (guest checkout has no user id, so
+  // the E.164 phone doubles as it — Meta recommends external_id on every
+  // event). Same hash input ⇒ stable across all of a buyer's events.
+  if (e164) user_data.external_id = [sha256(e164)];
+  if (a.firstName) user_data.fn = [sha256(a.firstName)];
+  if (a.lastName) user_data.ln = [sha256(a.lastName)];
   if (a.city) user_data.ct = [sha256(a.city)];
   if (a.state) user_data.st = [sha256(a.state)];
   if (a.country) user_data.country = [sha256(a.country)];

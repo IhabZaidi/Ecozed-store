@@ -63,6 +63,9 @@ export default function OrderForm({
   const draftRef = useRef<{ id: number; key: string } | null>(null);
   const draftKeyRef = useRef("");
   const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Purchase-twin fire-once guard: keyed by orderId, so even a retried render
+  // or double success-path can never emit a second browser Purchase.
+  const purchaseFiredRef = useRef<number | null>(null);
   const liveRef = useRef({ orderQty: 1, delivery: "home" as "home" | "stopdesk" });
 
   const validOffers = ((offers ?? []) as Offer[]).filter(
@@ -224,27 +227,70 @@ export default function OrderForm({
       // Draft (if any) just became the real order — stop background updates.
       if (draftTimer.current) clearTimeout(draftTimer.current);
       draftRef.current = null;
+      // Browser Purchase twin, sharing the SERVER's canonical event id
+      // (data.eventId — draft key or submit id, whichever CAPI used).
+      // Triple anti-duplication: (1) same ID ⇒ Meta dedups any repeat into
+      // one; (2) fired once per orderId via purchaseFiredRef; (3) value +
+      // currency + content_ids mirror the server payload exactly, so the pair
+      // matches on content too. fbq may be absent (idle pixel / ad-blocker) —
+      // then the server event stands alone and still counts exactly once.
+      if (purchaseFiredRef.current !== data.orderId) {
+        purchaseFiredRef.current = data.orderId;
+        try {
+          const fbq = (
+            window as unknown as { fbq?: (...args: unknown[]) => void }
+          ).fbq;
+          if (typeof fbq === "function" && typeof data.eventId === "string" && data.eventId)
+            fbq(
+              "track",
+              "Purchase",
+              {
+                value: data.total,
+                currency: "DZD",
+                content_ids: [slug],
+                content_type: "product",
+              },
+              { eventID: data.eventId }
+            );
+        } catch {
+          /* server twin already counted — nothing lost */
+        }
+      }
       // Order really saved as DRAFT (server confirmed 200) → NOW record
-      // InitiateCheckout server-side. Purchase is sent server-side by
-      // /api/orders/confirm (CAPI), strictly after client confirmation.
-      // Identity signals included for Event Match Quality (hashed server-side).
+      // InitiateCheckout on BOTH sides with the SAME id (Meta dedups the pair):
+      // browser twin for CAPI coverage + server twin with full identifiers.
+      // fbq may not exist yet (pixel loads at idle) or be blocked — the
+      // server event always fires, so coverage never drops to zero.
       const wName = WILAYAS.find((w) => w.code === body.wilayaCode)?.ar ?? "";
+      const icId = uid();
+      try {
+        const fbq = (
+          window as unknown as { fbq?: (...args: unknown[]) => void }
+        ).fbq;
+        if (typeof fbq === "function")
+          fbq(
+            "track",
+            "InitiateCheckout",
+            { value: data.total, currency: "DZD" },
+            { eventID: icId }
+          );
+      } catch {
+        /* pixel blocked or not loaded yet — server twin covers it */
+      }
       fetch("/api/fb-event", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           eventName: "InitiateCheckout",
-          eventId: uid(),
+          eventId: icId,
           slug,
           value: data.total,
           phone: body.phone,
+          fullName: body.fullName.trim(),
           city: body.commune.trim(),
           state: wName,
           country: "dz",
         }),
-        // Buyer may close the tab right after success — keepalive lets the
-        // event finish (same as the Pixel twins).
-        keepalive: true,
       }).catch(() => {});
       // Notify the page: it hides everything behind a centered success view.
       window.dispatchEvent(
