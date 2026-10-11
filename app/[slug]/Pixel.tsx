@@ -27,16 +27,18 @@ import Script from "next/script";
 export default function Pixel({ pixelId, slug, price }: { pixelId: string; slug: string; price?: number }) {
   if (!pixelId) return null;
 
-  // ViewContent twin body: the Server Component can't send it (no fbp/fbc/IP
-  // without killing ISR caching, and identifier-less CAPI events are
-  // skipped). Built here at idle instead — first-party fetch carries the
-  // cookies + IP + UA, so it always has identifiers. No browser twin exists
-  // for ViewContent, so no dedup key is needed — each view is exactly one.
-  // (Fired from fire() below, after the _fbp wait — same as PageView twin.)
-  const viewContentPost =
-    typeof price === "number" && price > 0
-      ? `post(JSON.stringify({ eventName: 'ViewContent', eventId: (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)), slug: ${JSON.stringify(slug)}, value: ${Math.round(price)} }));`
-      : "";
+  // ViewContent redundant pair: browser twin fires immediately with the fbq
+  // PageView, server twin fires from fire() below with the SAME id (Meta
+  // dedups the pair; either side alone still counts exactly once). The
+  // server twin waits for _fbp so first-visit matching stays strong; the
+  // browser twin needs no wait (fbq reads its own cookies).
+  const vcValue = typeof price === "number" && price > 0 ? Math.round(price) : 0;
+  const viewContentFbq = vcValue
+    ? `fbq('track', 'ViewContent', { content_ids: [${JSON.stringify(slug)}], content_type: 'product', value: ${vcValue}, currency: 'DZD' }, { eventID: vcid });`
+    : "";
+  const viewContentPost = vcValue
+    ? `post(JSON.stringify({ eventName: 'ViewContent', eventId: vcid, slug: ${JSON.stringify(slug)}, value: ${vcValue} }));`
+    : "";
 
   return (
     <>
@@ -58,7 +60,9 @@ export default function Pixel({ pixelId, slug, price }: { pixelId: string; slug:
     fbq('init', '${pixelId}');
     (function(){
       var eid = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      var vcid = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
       fbq('track', 'PageView', {}, { eventID: eid });
+      ${viewContentFbq}
       function post(body) {
         try {
           fetch('/api/fb-event', {
