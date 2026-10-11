@@ -3,9 +3,11 @@
 import Script from "next/script";
 
 /**
- * Browser-side Facebook Pixel — PageView ONLY (Meta's official snippet).
- * ViewContent, InitiateCheckout and Purchase are sent server-side via the
- * Conversions API (never blocked by ad-blockers, no double counting).
+ * Browser-side Facebook Pixel — PageView + ViewContent via fbq, each paired
+ * with a server-side CAPI twin sharing the same event ID (Meta dedups the
+ * pair). InitiateCheckout and Purchase twins are fired from OrderForm after
+ * the server confirms the save. Server-side sending is never blocked by
+ * ad-blockers and carries the full identifier set (no double counting).
  *
  * CAPI coverage: the browser PageView carries a per-visit eventID AND the
  * same ID is posted to /api/fb-event, which fires the server twin. Meta
