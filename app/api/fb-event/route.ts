@@ -3,7 +3,7 @@ import { z } from "zod";
 import { sendCapi, getFbpFbc, clientIp, splitName } from "@/lib/fb";
 
 const schema = z.object({
-  eventName: z.enum(["PageView", "InitiateCheckout", "Lead"]),
+  eventName: z.enum(["PageView", "ViewContent", "InitiateCheckout", "Lead"]),
   eventId: z.string().min(1).max(64),
   slug: z.string().min(1),
   value: z.number().optional(),
