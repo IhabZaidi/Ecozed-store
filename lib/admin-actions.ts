@@ -230,6 +230,13 @@ export async function setOrderStatus(formData: FormData) {
   redirect("/admin");
 }
 
+export async function deleteOrder(formData: FormData) {
+  await guard();
+  const id = Number(formData.get("id") || 0);
+  if (id) await db.delete(orders).where(eq(orders.id, id));
+  redirect("/admin");
+}
+
 async function upsertSetting(key: string, value: string) {
   await db
     .insert(settings)

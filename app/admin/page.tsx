@@ -4,7 +4,7 @@ import { desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { products, orders } from "@/lib/schema";
 import { isAdmin } from "@/lib/auth";
-import { setOrderStatus, deleteProduct } from "@/lib/admin-actions";
+import { setOrderStatus, deleteOrder, deleteProduct } from "@/lib/admin-actions";
 
 const STATUS_AR: Record<string, string> = {
   draft: "📝 مسودة",
@@ -100,15 +100,23 @@ export default async function AdminHome() {
               </p>
               <p>👤 {o.fullName} — <span dir="ltr">{o.phone}</span></p>
               <p>📍 {o.wilayaName} ({o.wilayaCode}) — {o.commune} {o.address ? `— ${o.address}` : ""}</p>
-              <form action={setOrderStatus} className="mt-2 flex gap-2">
-                <input type="hidden" name="id" value={o.id} />
-                <select name="status" defaultValue={o.status || "new"} className="rounded-lg border px-2 py-1">
-                  {Object.entries(STATUS_AR).map(([value, label]) => (
-                    <option key={value} value={value}>{label}</option>
-                  ))}
-                </select>
-                <button className="rounded-lg bg-black px-3 py-1 font-bold text-white">حفظ</button>
-              </form>
+              <div className="mt-2 flex items-center gap-2">
+                <form action={setOrderStatus} className="flex gap-2">
+                  <input type="hidden" name="id" value={o.id} />
+                  <select name="status" defaultValue={o.status || "new"} className="rounded-lg border px-2 py-1">
+                    {Object.entries(STATUS_AR).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                  <button className="rounded-lg bg-black px-3 py-1 font-bold text-white">حفظ</button>
+                </form>
+                <form action={deleteOrder}>
+                  <input type="hidden" name="id" value={o.id} />
+                  <button className="rounded-lg border border-red-300 px-3 py-1 font-bold text-red-600">
+                    حذف
+                  </button>
+                </form>
+              </div>
             </div>
           ))}
           {recentOrders.length === 0 && (

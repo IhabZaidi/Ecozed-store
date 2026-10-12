@@ -5,7 +5,7 @@ import { orders, products } from "@/lib/schema";
 import { orderSchema } from "@/lib/validation";
 import { wilayaName } from "@/lib/wilayas";
 import { getShipping, shippingFor, deliveryLabel } from "@/lib/settings";
-import { sendCapi, getFbpFbc, clientIp, splitName } from "@/lib/fb";
+import { sendCapi, getFbpFbc, clientIp, splitName, cleanFbp, cleanFbc } from "@/lib/fb";
 import { sendTelegram, orderTelegramText } from "@/lib/telegram";
 import { appendOrderToSheet } from "@/lib/sheets";
 
@@ -110,8 +110,8 @@ export async function POST(req: Request) {
     address: v.address.trim(),
     notes: v.notes,
     status: "new",
-    fbp: v.fbp || fbp,
-    fbc: v.fbc || fbc,
+    fbp: cleanFbp(v.fbp || fbp),
+    fbc: cleanFbc(v.fbc || fbc),
     clientIp: ip,
     userAgent: ua,
   };
@@ -144,8 +144,8 @@ export async function POST(req: Request) {
   const [firstName, lastName] = splitName(v.fullName);
   const baseEvent = {
     eventSourceUrl: siteUrl ? `${siteUrl.replace(/\/+$/, "")}/${product.slug}` : "",
-    fbp: v.fbp || fbp || undefined,
-    fbc: v.fbc || fbc || undefined,
+    fbp: cleanFbp(v.fbp || fbp) || undefined,
+    fbc: cleanFbc(v.fbc || fbc) || undefined,
     ip: ip || undefined,
     userAgent: ua || undefined,
     phone: v.phone,
