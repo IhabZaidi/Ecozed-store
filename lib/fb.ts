@@ -1,5 +1,6 @@
 import { createHash } from "crypto";
 import { getFbConfig } from "./settings";
+import { withRetries } from "./retry";
 
 /** Graph API version for CAPI. v20.0 was REMOVED by Meta on 2026-09-24
  * ( v21.0 goes 2027-01-21); v25.0 is supported until 2028. Bump this single
@@ -153,7 +154,12 @@ export async function sendCapi(a: CapiArgs) {
   if (process.env.DISABLE_OUTBOUND === "1")
     return { skipped: true, reason: "disabled" };
   const { pixelId, capiToken: token, testCode } = await getFbConfig();
-  if (!pixelId || !token) return { skipped: true };
+  if (!pixelId || !token) {
+    // Silent skips are how "orders save but nothing fires" goes unnoticed
+    // for days. A missing pixel/token in production is always a misconfig.
+    console.error("[capi] pixel ID or token missing — event skipped:", a.eventName);
+    return { skipped: true };
+  }
 
   const user_data: Record<string, string | string[]> = {};
   if (a.fbp) user_data.fbp = a.fbp;
@@ -179,7 +185,7 @@ export async function sendCapi(a: CapiArgs) {
   if (a.contentIds) custom_data.content_ids = a.contentIds;
   if (a.contentName) custom_data.content_name = a.contentName;
   if (a.numItems !== undefined) custom_data.num_items = a.numItems;
-  if (a.eventName === "ViewContent" || a.eventName === "Purchase")
+  if (a.eventName === "ViewContent" || a.eventName === "InitiateCheckout" || a.eventName === "Purchase")
     custom_data.content_type = "product";
 
   const payload: Record<string, unknown> = {
@@ -222,13 +228,18 @@ export async function sendCapi(a: CapiArgs) {
     return { skipped: true, reason: "no-identifier" };
 
   try {
-    const res = await fetch(
-      `https://graph.facebook.com/${CAPI_VERSION}/${pixelId}/events?access_token=${token}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      }
+    // Network throws (reset/timeout/DNS) retry 3x — same event_id, so Meta
+    // dedups any accidental double-delivery into one. HTTP 4xx/5xx responses
+    // do NOT retry (decisive: payload/auth problem, logged below instead).
+    const res = await withRetries("CAPI send", 3, () =>
+      fetch(
+        `https://graph.facebook.com/${CAPI_VERSION}/${pixelId}/events?access_token=${token}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      )
     );
     if (!res.ok) {
       // Never swallow Meta errors: a wrong pixel ID / token shows up here,

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders, products } from "@/lib/schema";
@@ -20,12 +21,65 @@ export async function POST(req: Request) {
   const parsed = orderSchema.safeParse(json);
   if (!parsed.success) {
     const first = parsed.error.issues[0];
+    // Field paths only, never values (no PII in logs). Tells us whether
+    // legit buyers are being bounced by validation (e.g. stale offers).
+    console.warn(
+      "order rejected",
+      parsed.error.issues.map((i) => `${i.path.join(".")}:${i.code}`).join(",")
+    );
     return NextResponse.json(
       { error: first?.message || "تحقق من الحقول وحاول مجددًا" },
       { status: 400 }
     );
   }
   const v = parsed.data;
+
+  // Idempotent retry: a buyer who taps submit twice, loses signal mid-POST,
+  // or auto-retries must NEVER create two rows. Every submit carries a
+  // client-generated eventId (and usually a draftId); if either already
+  // resolved into a real order, return THAT order instead of inserting.
+  // The returned eventId is the one the server Purchase used, so the
+  // browser twin still dedups correctly on the retry path too.
+  const priorResponse = async () => {
+    if (v.draftId) {
+      const d = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.id, v.draftId))
+        .limit(1);
+      const row = d[0];
+      if (row && row.status !== "draft") return row;
+    }
+    if (v.eventId) {
+      const p = await db
+        .select()
+        .from(orders)
+        .where(eq(orders.fbEventId, v.eventId))
+        .limit(1);
+      if (p[0] && p[0].status !== "draft") return p[0];
+    }
+    return null;
+  };
+  try {
+    const prior = await priorResponse();
+    if (prior) {
+      return NextResponse.json({
+        ok: true,
+        orderId: prior.id,
+        total: prior.total,
+        shipping: prior.shipping,
+        subtotal: prior.total - (prior.shipping ?? 0),
+        delivery: prior.delivery,
+        eventId: prior.fbEventId,
+        deduped: true,
+      });
+    }
+  } catch {
+    // Lookup failed (DB blip) — fall through to the normal path, which has
+    // its own error handling. Never fail a save because the dedup check died.
+  }
+
+  try {
 
   // product must exist + active
   const rows = await db
@@ -160,7 +214,12 @@ export async function POST(req: Request) {
     contentName: product.title,
     numItems: qty,
   };
-  void sendCapi({ ...baseEvent, eventName: "Purchase", eventId: purchaseEventId }).catch(() => {});
+  // Same lifetime guarantee as Telegram/Sheets below: an unawaited CAPI
+  // send can die with the frozen function and surface in Meta as a
+  // missing server event (phantom coverage gap). after() keeps it alive.
+  after(() =>
+    sendCapi({ ...baseEvent, eventName: "Purchase", eventId: purchaseEventId }).catch(() => {})
+  );
 
   // 3) Telegram + Google Sheet in background (never block the response)
   const notif = {
@@ -178,23 +237,30 @@ export async function POST(req: Request) {
     commune: v.commune.trim(),
     address: v.address.trim(),
   };
-  void sendTelegram(orderTelegramText(notif)).catch(() => {});
-  void appendOrderToSheet([
-    new Date().toISOString(),
-    orderId,
-    product.title,
-    qty,
-    unitPrice,
-    total,
-    v.fullName.trim(),
-    v.phone,
-    v.wilayaCode,
-    wName,
-    v.commune.trim(),
-    v.address.trim(),
-    shipping,
-    delivery,
-  ]).catch(() => {});
+  // Telegram + Sheets run in after(): fire-and-forget (void ...) lets Vercel
+  // freeze the function the moment the response returns, killing the send
+  // mid-flight — the classic "order saved but no Telegram message" flake.
+  // after() extends the function lifetime until the work finishes, with zero
+  // added latency on the buyer's success screen.
+  after(() => sendTelegram(orderTelegramText(notif)).catch(() => {}));
+  after(() =>
+    appendOrderToSheet([
+      new Date().toISOString(),
+      orderId,
+      product.title,
+      qty,
+      unitPrice,
+      total,
+      v.fullName.trim(),
+      v.phone,
+      v.wilayaCode,
+      wName,
+      v.commune.trim(),
+      v.address.trim(),
+      shipping,
+      delivery,
+    ]).catch(() => {})
+  );
 
   return NextResponse.json({
     ok: true,
@@ -208,5 +274,17 @@ export async function POST(req: Request) {
     // with THIS id — identical IDs are how Meta dedups the pair into one.
     eventId: purchaseEventId,
   });
+  } catch (e) {
+    // Any unexpected throw (DB outage, pool exhaustion…) used to bubble into
+    // a Next 500 HTML page: the buyer saw a spinner-turned-nothing and the
+    // order was lost with zero fingerprints. Now: structured log + clean JSON
+    // so the client shows a retryable error and Vercel logs show the cause.
+    // (Slug only — never log buyer PII.)
+    console.error("order save failed", v.slug, e);
+    return NextResponse.json(
+      { error: "تعذر حفظ الطلب، تحقق من الاتصال وحاول مرة أخرى" },
+      { status: 500 }
+    );
+  }
 }
 

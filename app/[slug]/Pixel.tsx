@@ -26,7 +26,7 @@ import Script from "next/script";
  * ~41KB unused-JS + 143ms bootup on the critical path — idle-loading moves
  * it (and the 96KB signals/config it pulls) fully out of the LCP window.
  */
-export default function Pixel({ pixelId, slug, price }: { pixelId: string; slug: string; price?: number }) {
+export default function Pixel({ pixelId, slug, price, title }: { pixelId: string; slug: string; price?: number; title?: string }) {
   if (!pixelId) return null;
 
   // ViewContent redundant pair: browser twin fires immediately with the fbq
@@ -39,7 +39,7 @@ export default function Pixel({ pixelId, slug, price }: { pixelId: string; slug:
     ? `fbq('track', 'ViewContent', { content_ids: [${JSON.stringify(slug)}], content_type: 'product', value: ${vcValue}, currency: 'DZD' }, { eventID: vcid });`
     : "";
   const viewContentPost = vcValue
-    ? `post(JSON.stringify({ eventName: 'ViewContent', eventId: vcid, slug: ${JSON.stringify(slug)}, value: ${vcValue} }));`
+    ? `post(JSON.stringify({ eventName: 'ViewContent', eventId: vcid, slug: ${JSON.stringify(slug)}, value: ${vcValue}, contentName: ${JSON.stringify(title || "")} }));`
     : "";
 
   return (

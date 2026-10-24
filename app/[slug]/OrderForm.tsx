@@ -14,6 +14,7 @@ type Props = {
   pricingMode?: string | null;
   offers?: Offer[] | null;
   ship: ShippingTable;
+  pixelId: string;
   /** landing pages: plain numbers without separators (2800 not 2.800) */
   plainNumbers?: boolean;
 };
@@ -48,6 +49,7 @@ export default function OrderForm({
   pricingMode,
   offers,
   ship,
+  pixelId,
   plainNumbers,
 }: Props) {
   const [loading, setLoading] = useState(false);
@@ -66,6 +68,8 @@ export default function OrderForm({
   // Purchase-twin fire-once guard: keyed by orderId, so even a retried render
   // or double success-path can never emit a second browser Purchase.
   const purchaseFiredRef = useRef<number | null>(null);
+  // InitiateCheckout guard: keyed by eventId to prevent multi-fire on retry/re-render
+  const icFiredRef = useRef<string | null>(null);
   const liveRef = useRef({ orderQty: 1, delivery: "home" as "home" | "stopdesk" });
 
   const validOffers = ((offers ?? []) as Offer[]).filter(
@@ -212,14 +216,38 @@ export default function OrderForm({
     }
 
     try {
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "حدث خطأ، حاول مرة أخرى");
+      const payload = JSON.stringify(body);
+      const send = () =>
+        fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: payload,
+          // Slow networks / closed tabs: deliver the POST even on unload.
+          keepalive: true,
+        });
+      let res: Response | null = null;
+      try {
+        res = await send();
+      } catch {
+        // Request never got a response (network blip, tunnel drop). One
+        // retry with the SAME eventId — the server dedupes by it, so a
+        // retry can complete a lost save but never double-save.
+        try {
+          res = await send();
+        } catch {
+          res = null;
+        }
+      }
+      if (!res) {
+        setError("تعذر إرسال الطلب، تحقق من الاتصال وحاول مجددًا");
+        setLoading(false);
+        return;
+      }
+      // Non-JSON body means an infra-level failure above our handler
+      // (our API always answers JSON now) — retryable, never silent.
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        setError(data?.error || "حدث خطأ، حاول مرة أخرى");
         setLoading(false);
         return;
       }
@@ -255,6 +283,8 @@ export default function OrderForm({
         } catch {
           /* server twin already counted — nothing lost */
         }
+        // Beacon removed: fbq + server CAPI (via after()) share same eventID and deduplicate correctly.
+        // sendBeacon to tr/ endpoint does NOT dedupe with fbq, creating noise (3x Processed per event).
       }
       // Order really saved as DRAFT (server confirmed 200) → NOW record
       // InitiateCheckout on BOTH sides with the SAME id (Meta dedups the pair):
@@ -263,19 +293,24 @@ export default function OrderForm({
       // server event always fires, so coverage never drops to zero.
       const wName = WILAYAS.find((w) => w.code === body.wilayaCode)?.ar ?? "";
       const icId = uid();
-      try {
-        const fbq = (
-          window as unknown as { fbq?: (...args: unknown[]) => void }
-        ).fbq;
-        if (typeof fbq === "function")
-          fbq(
-            "track",
-            "InitiateCheckout",
-            { value: data.total, currency: "DZD" },
-            { eventID: icId }
-          );
-      } catch {
-        /* pixel blocked or not loaded yet — server twin covers it */
+      // Browser InitiateCheckout twin with fire-once guard (prevents multi-fire on retry/re-render).
+      // Server twin via /api/fb-event shares same icId — Meta deduplicates the pair.
+      if (icFiredRef.current !== icId) {
+        icFiredRef.current = icId;
+        try {
+          const fbq = (
+            window as unknown as { fbq?: (...args: unknown[]) => void }
+          ).fbq;
+          if (typeof fbq === "function")
+            fbq(
+              "track",
+              "InitiateCheckout",
+              { value: data.total, currency: "DZD" },
+              { eventID: icId }
+            );
+        } catch {
+          /* pixel blocked or not loaded yet — server twin covers it */
+        }
       }
       fetch("/api/fb-event", {
         method: "POST",
@@ -285,12 +320,16 @@ export default function OrderForm({
           eventId: icId,
           slug,
           value: data.total,
+          numItems: orderQty,
+          contentName: title,
           phone: body.phone,
           fullName: body.fullName.trim(),
           city: body.commune.trim(),
           state: wName,
           country: "dz",
         }),
+        // Buyer may close the tab the instant success shows — deliver anyway.
+        keepalive: true,
       }).catch(() => {});
       // Notify the page: it hides everything behind a centered success view.
       window.dispatchEvent(

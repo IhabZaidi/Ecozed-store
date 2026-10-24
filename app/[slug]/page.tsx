@@ -101,13 +101,14 @@ export default async function LandingPage({
         clarityId={clarityId}
         offers={offers}
         shipTable={shipTable}
+        videoUrl={p.videoUrl}
       />
     );
   }
 
   return (
     <>
-      <Pixel pixelId={pixelId} slug={slug} price={p.price} />
+      <Pixel pixelId={pixelId} slug={slug} price={p.price} title={p.title} />
       <Clarity clarityId={clarityId} />
 
       {p.showTopBar !== false && <TopBar />}
@@ -268,6 +269,36 @@ export default async function LandingPage({
           </div>
         </div>
 
+        {/* Optional YouTube video before the form */}
+        {p.videoUrl && (() => {
+          const videoId = (() => {
+            const patterns = [
+              /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
+              /youtube\.com\/shorts\/([^&\n?#]+)/,
+            ];
+            for (const pattern of patterns) {
+              const match = p.videoUrl.match(pattern);
+              if (match?.[1]) return match[1];
+            }
+            return null;
+          })();
+          if (!videoId) return null;
+          return (
+            <div className="my-6 aspect-video w-full max-w-xl mx-auto">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}`}
+                title="فيديو المنتج"
+                frameBorder={0}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                referrerPolicy="strict-origin-when-cross-origin"
+                allowFullScreen
+                className="w-full h-full rounded-2xl"
+                loading="lazy"
+              />
+            </div>
+          );
+        })()}
+
         {/* Order form */}
         <section id="order" className="mt-6 scroll-mt-4">
           <OrderForm
@@ -278,6 +309,7 @@ export default async function LandingPage({
             pricingMode={p.pricingMode}
             offers={offers}
             ship={shipTable}
+            pixelId={pixelId}
           />
         </section>
       </main>

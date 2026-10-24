@@ -1,4 +1,5 @@
 import { getRawSettings } from "./settings";
+import { withRetries } from "./retry";
 
 function esc(s: string) {
   // Telegram parse_mode=HTML fails the WHOLE message on raw & < >
@@ -18,15 +19,21 @@ export async function sendTelegram(text: string) {
   // Same local kill-switch as CAPI (see lib/fb.ts).
   if (process.env.DISABLE_OUTBOUND === "1") return { skipped: true };
   const { token, chatId } = await getTelegramConfig();
-  if (!token || !chatId) return { skipped: true };
+  if (!token || !chatId) {
+    // Same rule as CAPI: a missing bot/chat in production must scream,
+    // not silently skip every notification while orders pile up.
+    console.error("[telegram] bot token or chat ID missing — message skipped");
+    return { skipped: true };
+  }
   try {
-    const res = await fetch(
-      `https://api.telegram.org/bot${token}/sendMessage`,
-      {
+    // Retry network throws only (see lib/retry.ts): an HTTP error from
+    // Telegram is decisive and resending could double-post the message.
+    const res = await withRetries("Telegram send", 3, () =>
+      fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
-      }
+      })
     );
     if (!res.ok) {
       const err = await res.text().catch(() => "");

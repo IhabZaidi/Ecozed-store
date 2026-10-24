@@ -102,6 +102,12 @@ export default async function EditProduct({
           <input type="checkbox" name="active" defaultChecked={!!p.active} className="h-5 w-5" /> منشور (Active)
         </label>
 
+        <label className="block">
+          <span className="mb-1 block text-sm font-bold">رابط فيديو يوتيوب (اختياري)</span>
+          <input name="videoUrl" dir="ltr" defaultValue={p.videoUrl || ""} placeholder="https://youtube.com/watch?v=... أو https://youtu.be/..." className="w-full rounded-xl border px-4 py-3 font-mono text-sm" />
+          <p className="mt-1 text-xs text-gray-500">يظهر قبل استمارة الطلب في صفحة الهبوط</p>
+        </label>
+
         <label className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 font-bold">
           <input type="checkbox" name="showTopBar" defaultChecked={p.showTopBar !== false} className="h-5 w-5" /> 📦 الشريط العلوي (افتح الطلبية وتأكد من الجودة وبعدها خلص)
         </label>

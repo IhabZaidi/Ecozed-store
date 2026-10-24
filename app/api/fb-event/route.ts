@@ -7,6 +7,9 @@ const schema = z.object({
   eventId: z.string().min(1).max(64),
   slug: z.string().min(1),
   value: z.number().optional(),
+  // Optional: numItems for InitiateCheckout/Purchase, contentName for EMQ
+  numItems: z.number().int().positive().optional(),
+  contentName: z.string().max(200).optional(),
   // Optional identity signals for EMQ (hashed server-side in sendCapi).
   // InitiateCheckout fires right after a validated order save, so the buyer
   // data is available — same match quality as Purchase.
@@ -41,8 +44,11 @@ export async function POST(req: Request) {
   const ua = req.headers.get("user-agent") || "";
   const [firstName, lastName] = splitName(parsed.data.fullName);
 
+  const eventName = parsed.data.eventName;
+  // Only include content_ids for product-related events (not PageView)
+  const isProductEvent = eventName === "ViewContent" || eventName === "InitiateCheckout";
   const r = await sendCapi({
-    eventName: parsed.data.eventName,
+    eventName,
     eventId: parsed.data.eventId,
     eventSourceUrl: pageUrl,
     fbp: fbp || undefined,
@@ -57,8 +63,9 @@ export async function POST(req: Request) {
     country: parsed.data.country || undefined,
     value: parsed.data.value,
     currency: "DZD",
-    contentIds: [parsed.data.slug],
-    numItems: 1,
+    contentIds: isProductEvent ? [parsed.data.slug] : undefined,
+    contentName: parsed.data.contentName || undefined,
+    numItems: parsed.data.numItems,
   });
   return NextResponse.json({ ok: true, ...r });
 }

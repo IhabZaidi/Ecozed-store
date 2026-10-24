@@ -7,6 +7,39 @@ import Pixel from "./Pixel";
 import Clarity from "./Clarity";
 import TopBar from "./TopBar";
 
+/** Extract YouTube video ID from various URL formats. */
+function getYouTubeId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([^&\n?#]+)/,
+    /youtube\.com\/shorts\/([^&\n?#]+)/,
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+}
+
+/** Render YouTube embed if videoUrl exists and is valid. */
+function VideoEmbed({ videoUrl }: { videoUrl: string }) {
+  const videoId = getYouTubeId(videoUrl);
+  if (!videoId) return null;
+  return (
+    <div className="my-6 aspect-video w-full">
+      <iframe
+        src={`https://www.youtube.com/embed/${videoId}`}
+        title="فيديو المنتج"
+        frameBorder={0}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerPolicy="strict-origin-when-cross-origin"
+        allowFullScreen
+        className="w-full h-full rounded-2xl"
+        loading="lazy"
+      />
+    </div>
+  );
+}
+
 // Below-fold interactivity ships in separate chunks (not in the initial JS).
 // Lighthouse: OrderForm was ~25KB unused-JS + parse/compile on the critical
 // path. Dynamic = separate bundle, hero paints first, form hydrates after.
@@ -29,6 +62,7 @@ type Props = {
   clarityId: string;
   offers: ProductOffer[];
   shipTable: ShippingTable;
+  videoUrl?: string;
 };
 
 /**
@@ -43,7 +77,7 @@ type Props = {
  * - Every image carries a ~300B blur placeholder: instant paint, sharp swap.
  * - Below-fold blocks use content-visibility: browser skips their layout/paint.
  */
-export default function LandingMinimal({ product: p, pixelId, clarityId, offers, shipTable }: Props) {
+export default function LandingMinimal({ product: p, pixelId, clarityId, offers, shipTable, videoUrl }: Props) {
   const images = (p.images as ProductImage[] | null) ?? [];
   const cta = p.ctaText || "اطلب الآن — الدفع عند الاستلام";
   const blocks = groupImages(images);
@@ -97,7 +131,7 @@ export default function LandingMinimal({ product: p, pixelId, clarityId, offers,
 
   return (
     <>
-      <Pixel pixelId={pixelId} slug={p.slug} price={p.price} />
+      <Pixel pixelId={pixelId} slug={p.slug} price={p.price} title={p.title} />
       <Clarity clarityId={clarityId} />
 
       {p.showTopBar !== false && <TopBar />}
@@ -117,6 +151,9 @@ export default function LandingMinimal({ product: p, pixelId, clarityId, offers,
           </div>
         ))}
 
+        {/* Optional YouTube video before the form */}
+        {videoUrl && <VideoEmbed videoUrl={videoUrl} />}
+
         {/* The form (same width as images + footer button: full max-w-xl) */}
         <section id="order" className="mt-4 scroll-mt-4">
           <OrderForm
@@ -127,6 +164,7 @@ export default function LandingMinimal({ product: p, pixelId, clarityId, offers,
             pricingMode={p.pricingMode}
             offers={offers}
             ship={shipTable}
+            pixelId={pixelId}
             plainNumbers
           />
         </section>
