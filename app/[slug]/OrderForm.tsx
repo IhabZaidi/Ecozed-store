@@ -44,6 +44,7 @@ function normalizeClientPhone(raw: string): string | null {
 
 export default function OrderForm({
   slug,
+  title,
   price,
   ctaText,
   pricingMode,

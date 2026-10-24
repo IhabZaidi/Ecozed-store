@@ -131,7 +131,7 @@ export default function LandingMinimal({ product: p, pixelId, clarityId, offers,
 
   return (
     <>
-      <Pixel pixelId={pixelId} slug={p.slug} price={p.price} title={p.title} />
+      <Pixel pixelId={pixelId} slug={p.slug} price={p.price} title={p.title ?? undefined} />
       <Clarity clarityId={clarityId} />
 
       {p.showTopBar !== false && <TopBar />}

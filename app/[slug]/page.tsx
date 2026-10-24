@@ -101,14 +101,14 @@ export default async function LandingPage({
         clarityId={clarityId}
         offers={offers}
         shipTable={shipTable}
-        videoUrl={p.videoUrl}
+        videoUrl={p.videoUrl ?? ""}
       />
     );
   }
 
   return (
     <>
-      <Pixel pixelId={pixelId} slug={slug} price={p.price} title={p.title} />
+      <Pixel pixelId={pixelId} slug={slug} price={p.price} title={p.title ?? undefined} />
       <Clarity clarityId={clarityId} />
 
       {p.showTopBar !== false && <TopBar />}
