@@ -458,26 +458,32 @@ export default function OrderForm({
                 type="button"
                 onClick={() => setSel(i)}
                 aria-pressed={active}
-                className={`relative flex w-full items-center justify-between rounded-xl border-2 px-4 py-3 text-right transition ${
+                className={`relative flex w-full flex-col items-start justify-between rounded-xl border-2 px-4 py-3 text-right transition gap-2 ${
                   active
                     ? "border-green-600 bg-green-50"
                     : "border-gray-200 bg-white"
                 }`}
               >
-                {save > 0 && (
-                  <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border border-red-200 bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700 shadow-sm">
-                    وفّر {fmt(save)} دج
+                {(() => {
+                  const label = o.label?.trim() ?? "";
+                  if (!label) return null;
+                  return (
+                    <span className="absolute -top-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-full border border-red-200 bg-red-100 px-2.5 py-0.5 text-xs font-bold text-red-700 shadow-sm">
+                      {label}
+                    </span>
+                  );
+                })()}
+                <div className="w-full flex items-center justify-between">
+                  <span className="font-extrabold">
+                    {active ? "✅ " : ""}
+                    {qtyLabel(o.qty)}
                   </span>
-                )}
-                <span className="font-extrabold">
-                  {active ? "✅ " : ""}
-                  {qtyLabel(o.qty)}
-                </span>
-                <span className="flex shrink-0 items-center gap-1.5">
-                  <span className="font-black">
-                    {fmt(o.price)} دج
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <span className="font-black">
+                      {fmt(o.price)} دج
+                    </span>
                   </span>
-                </span>
+                </div>
               </button>
             );
           })}

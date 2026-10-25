@@ -4,7 +4,9 @@ import { desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { products, orders } from "@/lib/schema";
 import { isAdmin } from "@/lib/auth";
-import { setOrderStatus, deleteOrder, deleteProduct } from "@/lib/admin-actions";
+import { setOrderStatus, deleteOrder } from "@/lib/admin-actions";
+import { ProductList } from "./ProductList";
+import { OrdersList } from "./ProductList";
 
 const STATUS_AR: Record<string, string> = {
   draft: "📝 مسودة",
@@ -37,93 +39,9 @@ export default async function AdminHome() {
         </div>
       </header>
 
-      <section>
-        <h2 className="mb-2 text-lg font-extrabold">المنتجات ({allProducts.length})</h2>
-        <div className="space-y-2">
-          {allProducts.map((p) => (
-            <div key={p.id} className="flex items-center justify-between gap-3 rounded-xl border p-3">
-              <div>
-                <p className="font-bold">
-                  {p.active ? "🟢" : "⚪"} {p.title}
-                  <span className="mr-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs">
-                    {(p.pageType ?? "landing") === "product" ? "📄 منتج" : "🚀 هبوط"}
-                  </span>
-                  <span className="mr-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs">
-                    {(p.pricingMode ?? "qty") === "offers" ? "🎁 عروض" : "📦 كمية"}
-                  </span>
-                  <span className="mr-2 text-sm text-gray-500">{p.price} دج</span>
-                </p>
-                <p className="text-sm" dir="ltr">
-                  <Link href={`/${p.slug}`} className="text-blue-600 underline">
-                    /{p.slug}
-                  </Link>
-                  {siteUrl ? <span className="text-gray-400"> — {siteUrl}/{p.slug}</span> : null}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                <Link href={`/admin/products/${p.id}`} className="rounded-lg border px-3 py-1.5 text-sm font-bold">
-                  تعديل
-                </Link>
-                <form action={deleteProduct}>
-                  <input type="hidden" name="id" value={p.id} />
-                  <button className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-bold text-red-600">
-                    حذف
-                  </button>
-                </form>
-              </div>
-            </div>
-          ))}
-          {allProducts.length === 0 && (
-            <p className="rounded-xl bg-gray-50 p-4 text-gray-500">
-              لا توجد منتجات بعد. أنشئ أول Landing Page من زر “منتج جديد”.
-            </p>
-          )}
-        </div>
-      </section>
+      <ProductList products={allProducts} siteUrl={siteUrl} />
 
-      <section className="mt-8">
-        <h2 className="mb-2 text-lg font-extrabold">أحدث الطلبات ({recentOrders.length})</h2>
-        <div className="space-y-2">
-          {recentOrders.map((o) => (
-            <div key={o.id} className="rounded-xl border p-3 text-sm">
-              <p className="font-bold">
-                #{o.id} — {o.productTitle} × {o.qty} = {o.total} دج
-                {(o.shipping ?? 0) > 0 && (
-                  <span className="font-normal text-gray-500">
-                    {" "}(شامل التوصيل {o.shipping} دج)
-                  </span>
-                )}
-                <span className="mr-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs">
-                  {(o.delivery ?? "home") === "stopdesk" ? "🏢 مكتب" : "🏠 منزل"}
-                </span>
-                <span className="mr-2 rounded-full bg-gray-100 px-2 py-0.5">{STATUS_AR[o.status ?? "new"] ?? o.status}</span>
-              </p>
-              <p>👤 {o.fullName} — <span dir="ltr">{o.phone}</span></p>
-              <p>📍 {o.wilayaName} ({o.wilayaCode}) — {o.commune} {o.address ? `— ${o.address}` : ""}</p>
-              <div className="mt-2 flex items-center gap-2">
-                <form action={setOrderStatus} className="flex gap-2">
-                  <input type="hidden" name="id" value={o.id} />
-                  <select name="status" defaultValue={o.status || "new"} className="rounded-lg border px-2 py-1">
-                    {Object.entries(STATUS_AR).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
-                    ))}
-                  </select>
-                  <button className="rounded-lg bg-black px-3 py-1 font-bold text-white">حفظ</button>
-                </form>
-                <form action={deleteOrder}>
-                  <input type="hidden" name="id" value={o.id} />
-                  <button className="rounded-lg border border-red-300 px-3 py-1 font-bold text-red-600">
-                    حذف
-                  </button>
-                </form>
-              </div>
-            </div>
-          ))}
-          {recentOrders.length === 0 && (
-            <p className="rounded-xl bg-gray-50 p-4 text-gray-500">لا توجد طلبات بعد.</p>
-          )}
-        </div>
-      </section>
+      <OrdersList orders={recentOrders as any} />
     </main>
   );
 }
@@ -141,4 +59,3 @@ function LogoutBtn() {
     </form>
   );
 }
-

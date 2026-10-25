@@ -219,7 +219,7 @@ export async function deleteProduct(formData: FormData) {
   await guard();
   const id = Number(formData.get("id") || 0);
   if (id) await db.delete(products).where(eq(products.id, id));
-  redirect("/admin");
+  return { success: true };
 }
 
 export async function setOrderStatus(formData: FormData) {
@@ -234,7 +234,7 @@ export async function deleteOrder(formData: FormData) {
   await guard();
   const id = Number(formData.get("id") || 0);
   if (id) await db.delete(orders).where(eq(orders.id, id));
-  redirect("/admin");
+  return { success: true };
 }
 
 async function upsertSetting(key: string, value: string) {
