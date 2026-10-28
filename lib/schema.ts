@@ -51,6 +51,8 @@ export const products = pgTable("products", {
   // created before the column existed) also renders it — only explicit
   // false hides it, so old products keep the bar after migrating.
   showTopBar: boolean("show_top_bar").default(true),
+  // WhatsApp quick contact button — fixed number/text, per-product toggle.
+  showWhatsApp: boolean("show_whatsapp").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

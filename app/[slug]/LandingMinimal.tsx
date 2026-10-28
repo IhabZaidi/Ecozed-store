@@ -154,6 +154,20 @@ export default function LandingMinimal({ product: p, pixelId, clarityId, offers,
         {/* Optional YouTube video before the form */}
         {videoUrl && <VideoEmbed videoUrl={videoUrl} />}
 
+        {/* WhatsApp quick contact button — fixed number & text */}
+        {p.showWhatsApp !== false && (
+          <section className="mt-4 scroll-mt-4">
+            <a
+              href="https://wa.me/213796332534"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full block rounded-2xl bg-green-600 px-6 py-4 text-center text-lg font-extrabold text-white shadow-lg hover:bg-green-700 transition active:scale-[0.99]"
+            >
+              💬 للأتصال بنا عبر الواتساب
+            </a>
+          </section>
+        )}
+
         {/* The form (same width as images + footer button: full max-w-xl) */}
         <section id="order" className="mt-4 scroll-mt-4">
           <OrderForm

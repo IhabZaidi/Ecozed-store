@@ -179,7 +179,16 @@ export function OrdersList({ orders }: OrdersListProps) {
 
   return (
     <section>
-      <h2 className="mb-2 text-lg font-extrabold">أحدث الطلبات ({orders.length})</h2>
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-lg font-extrabold">أحدث الطلبات ({orders.length})</h2>
+        <a
+          href="/api/admin/orders/export"
+          download
+          className="rounded-xl border border-green-600 bg-green-50 px-4 py-2 text-sm font-extrabold text-green-700 hover:bg-green-100 transition"
+        >
+          ⬇️ تصدير إلى Excel
+        </a>
+      </div>
       <div className="space-y-2">
         {orders.map((o) => (
           <div key={o.id} className="rounded-xl border p-3 text-sm">

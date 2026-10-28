@@ -112,6 +112,10 @@ export default async function EditProduct({
           <input type="checkbox" name="showTopBar" defaultChecked={p.showTopBar !== false} className="h-5 w-5" /> 📦 الشريط العلوي (افتح الطلبية وتأكد من الجودة وبعدها خلص)
         </label>
 
+        <label className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 font-bold">
+          <input type="checkbox" name="showWhatsApp" defaultChecked={p.showWhatsApp !== false} className="h-5 w-5" /> 💬 زر واتساب للتواصل السريع
+        </label>
+
         <button className="w-full rounded-2xl bg-black px-6 py-4 font-extrabold text-white">
           حفظ التعديلات 💾
         </button>

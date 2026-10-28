@@ -201,6 +201,7 @@ export async function saveProduct(formData: FormData) {
       "اطلب الآن — الدفع عند الاستلام",
     active: formData.get("active") === "on",
     showTopBar: formData.get("showTopBar") === "on",
+    showWhatsApp: formData.get("showWhatsApp") === "on",
     updatedAt: new Date(),
   };
   if (!values.price || values.price < 100)

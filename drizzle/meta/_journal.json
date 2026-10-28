@@ -43,6 +43,13 @@
       "when": 1791667970526,
       "tag": "0005_secret_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793191227295,
+      "tag": "0006_open_adam_warlock",
+      "breakpoints": true
     }
   ]
 }
