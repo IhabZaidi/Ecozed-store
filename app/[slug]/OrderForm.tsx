@@ -568,10 +568,7 @@ export default function OrderForm({
       <div className="mb-4 space-y-1 rounded-xl bg-gray-50 px-4 py-3 text-sm font-bold">
         <div className="flex justify-between">
           <span>💰 سعر {isOffers ? "العرض" : "المنتج"}</span>
-          <span>
-            {fmt(cost)} دج
-            {isOffers && chosen?.perPiece && <span className="text-green-600 text-sm font-medium ml-1">(للقطعة)</span>}
-          </span>
+          <span>{fmt(cost)} دج</span>
         </div>
         <div className="flex justify-between">
           <span>
