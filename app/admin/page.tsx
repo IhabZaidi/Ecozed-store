@@ -96,16 +96,20 @@ export default async function AdminHome() {
             title="أحدث الطلبات"
             count={recentOrders.length}
             action={
-              <a
-                href="/api/admin/orders/export"
-                download
+              <Link
+                href="/admin/orders"
                 className="text-sm font-medium text-green-700 hover:underline"
               >
-                ⬇️ تصدير
-              </a>
+                عرض الكل
+              </Link>
             }
           />
-          <OrdersList orders={recentOrders as any} products={allProducts} />
+          <OrdersList
+            orders={recentOrders as any}
+            products={allProducts}
+            showFilters={false}
+            showExport={false}
+          />
         </section>
       </div>
     </main>

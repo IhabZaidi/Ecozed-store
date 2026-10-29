@@ -124,7 +124,7 @@ export default async function AdminOrders({
 
       {/* Orders List */}
       <section>
-        <OrdersList orders={recentOrders as any} products={allProducts} />
+        <OrdersList orders={recentOrders as any} products={allProducts} hideStatusFilter={true} showExport={false} />
 
         {/* Pagination */}
         {totalPages > 1 && (

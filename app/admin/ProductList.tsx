@@ -194,6 +194,9 @@ interface Order {
 interface OrdersListProps {
   orders: Order[];
   products?: Product[];
+  showFilters?: boolean;
+  showExport?: boolean;
+  hideStatusFilter?: boolean;
 }
 
 function StatusBadge({ status }: { status: string | null | undefined }) {
@@ -214,7 +217,7 @@ function DeliveryBadge({ delivery }: { delivery: string | null | undefined }) {
   );
 }
 
-export function OrdersList({ orders, products = [] }: OrdersListProps) {
+export function OrdersList({ orders, products = [], showFilters = true, showExport = true, hideStatusFilter = false }: OrdersListProps) {
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: number; title: string } | null>(null);
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -274,61 +277,69 @@ export function OrdersList({ orders, products = [] }: OrdersListProps) {
   return (
     <section>
       {/* Header with filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
-          <h2 className="text-lg font-extrabold">أحدث الطلبات <span className="font-normal text-gray-500">({filteredOrders.length}/{orders.length})</span></h2>
-          {/* Status filter pills */}
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="تصفية حسب الحالة">
-            <button
-              onClick={() => setStatusFilter("all")}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition ${statusFilter === "all" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-            >
-              الكل ({orders.length})
-            </button>
-            {Object.entries(STATUS_AR).map(([key, label]) => {
-              const shortLabel = label.replace(/^./, "").trim();
-              return (
+      {showFilters && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+            <h2 className="text-lg font-extrabold">أحدث الطلبات <span className="font-normal text-gray-500">({filteredOrders.length}/{orders.length})</span></h2>
+            {!hideStatusFilter && (
+              <>
+                {/* Status filter pills */}
+                <div className="flex flex-wrap gap-1.5" role="group" aria-label="تصفية حسب الحالة">
+                  <button
+                    onClick={() => setStatusFilter("all")}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition ${statusFilter === "all" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                  >
+                    الكل ({orders.length})
+                  </button>
+                  {Object.entries(STATUS_AR).map(([key, label]) => {
+                    const shortLabel = label.replace(/^./u, "").trim();
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => setStatusFilter(key)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                          statusFilter === key ? "bg-black text-white" : STATUS_COLOR[key] + " hover:opacity-80"
+                        }`}
+                      >
+                        {shortLabel} ({statusCounts[key] ?? 0})
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+            {/* Product filter pills */}
+            {products.length > 0 && (
+              <div className="flex flex-wrap gap-1.5" role="group" aria-label="تصفية حسب المنتج">
                 <button
-                  key={key}
-                  onClick={() => setStatusFilter(key)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
-                    statusFilter === key ? "bg-black text-white" : STATUS_COLOR[key] + " hover:opacity-80"
-                  }`}
+                  onClick={() => setProductFilter("all")}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${productFilter === "all" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
                 >
-                  {shortLabel} ({statusCounts[key] ?? 0})
+                  جميع المنتجات
                 </button>
-              );
-            })}
+                {products.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setProductFilter(p.title)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium transition ${productFilter === p.title ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
+                  >
+                    {p.title} ({productCounts[p.title] ?? 0})
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          {/* Product filter pills */}
-          {products.length > 0 && (
-            <div className="flex flex-wrap gap-1.5" role="group" aria-label="تصفية حسب المنتج">
-              <button
-                onClick={() => setProductFilter("all")}
-                className={`rounded-full px-3 py-1 text-xs font-medium transition ${productFilter === "all" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-              >
-                جميع المنتجات
-              </button>
-              {products.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setProductFilter(p.title)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${productFilter === p.title ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-                >
-                  {p.title} ({productCounts[p.title] ?? 0})
-                </button>
-              ))}
-            </div>
+          {showExport && (
+            <a
+              href="/api/admin/orders/export"
+              download
+              className="rounded-xl border border-green-600 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100 transition whitespace-nowrap"
+            >
+              ⬇️ تصدير Excel
+            </a>
           )}
         </div>
-        <a
-          href="/api/admin/orders/export"
-          download
-          className="rounded-xl border border-green-600 bg-green-50 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-100 transition whitespace-nowrap"
-        >
-          ⬇️ تصدير Excel
-        </a>
-      </div>
+      )}
 
       {/* Orders List */}
       <div className="space-y-2">
