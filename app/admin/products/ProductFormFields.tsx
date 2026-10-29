@@ -109,66 +109,74 @@ export function ProductForm({ initial }: { initial?: Product | null }) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* serialized for the server action */}
       <input type="hidden" name="imagesJson" value={JSON.stringify(items)} />
 
-      <div className="rounded-2xl border border-dashed p-4">
-        <p className="text-sm font-bold">
-          📸 صور المنتج ({items.length}/{MAX_PRODUCT_IMAGES}) — تُضغط تلقائيًا إلى WebP
-        </p>
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          disabled={uploading || items.length >= MAX_PRODUCT_IMAGES}
-          onChange={(e) => upload(e.target.files)}
-          className="mt-2 w-full text-sm"
-        />
-        <div className="mt-2 flex gap-2">
-          <input
-            value={urlInput}
-            onChange={(e) => setUrlInput(e.target.value)}
-            dir="ltr"
-            placeholder="https://… (رابط صورة خارجي)"
-            className="flex-1 rounded-xl border px-3 py-2 font-mono text-sm"
-          />
-          <button
-            type="button"
-            onClick={addUrl}
-            className="rounded-xl border px-4 py-2 text-sm font-bold"
-          >
-            إضافة
-          </button>
-        </div>
-        {msg && <p className="mt-1 text-sm text-gray-600">{msg}</p>}
-      </div>
+      <fieldset className="rounded-2xl border border-gray-200 bg-white p-4 space-y-4">
+        <legend className="text-sm font-bold text-gray-900">📸 صور المنتج ({items.length}/{MAX_PRODUCT_IMAGES})</legend>
 
-      {items.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {items.map((it, i) => (
-            <div
-              key={`${it.url}-${i}`}
-              className="relative overflow-hidden rounded-xl border"
+        <div className="space-y-3">
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            disabled={uploading || items.length >= MAX_PRODUCT_IMAGES}
+            onChange={(e) => upload(e.target.files)}
+            className="w-full text-sm"
+          />
+
+          <div className="flex gap-2">
+            <input
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              dir="ltr"
+              placeholder="https://… (رابط صورة خارجي)"
+              className="flex-1 rounded-xl border border-gray-200 px-3 py-2 font-mono text-sm focus:border-black focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={addUrl}
+              disabled={items.length >= MAX_PRODUCT_IMAGES}
+              className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imgUrl(it)}
-                alt={`صورة ${i + 1}`}
-                className="aspect-square w-full object-cover"
-              />
-              <button
-                type="button"
-                onClick={() => removeAt(i)}
-                aria-label="حذف الصورة"
-                className="absolute left-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-xs font-bold text-white"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+              إضافة
+            </button>
+          </div>
+
+          {msg && (
+            <p className={`text-sm ${msg.includes("✅") ? "text-green-700" : "text-red-600"}`}>
+              {msg}
+            </p>
+          )}
         </div>
-      )}
+
+        {items.length > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            {items.map((it, i) => (
+              <div
+                key={`${it.url}-${i}`}
+                className="relative overflow-hidden rounded-xl border border-gray-200"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imgUrl(it)}
+                  alt={`صورة ${i + 1}`}
+                  className="aspect-square w-full object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeAt(i)}
+                  aria-label="حذف الصورة"
+                  className="absolute left-1 top-1 rounded-full bg-black/70 px-2 py-0.5 text-xs font-bold text-white hover:bg-black transition"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </fieldset>
     </div>
   );
 }
