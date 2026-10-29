@@ -3,13 +3,13 @@
 import { useState } from "react";
 import type { ProductOffer } from "@/lib/schema";
 
-type Row = { qty: string; price: string; label: string };
+type Row = { qty: string; price: string; label: string; perPiece: boolean };
 
 function toRows(offers: ProductOffer[] | null | undefined): Row[] {
-  if (!offers || offers.length === 0) return [{ qty: "1", price: "", label: "" }];
+  if (!offers || offers.length === 0) return [{ qty: "1", price: "", label: "", perPiece: false }];
   return offers
     .slice(0, 5)
-    .map((o) => ({ qty: String(o.qty), price: String(o.price), label: o.label ?? "" }));
+    .map((o) => ({ qty: String(o.qty), price: String(o.price), label: o.label ?? "", perPiece: o.perPiece ?? false }));
 }
 
 export function PricingFields({
@@ -34,6 +34,7 @@ export function PricingFields({
         qty: Math.round(Number(r.qty)),
         price: Math.round(Number(r.price)),
         ...(r.label.trim() ? { label: r.label.trim().slice(0, 40) } : {}),
+        ...(r.perPiece ? { perPiece: true } : {}),
       }))
       .filter((o) => o.qty >= 1 && o.qty <= 50 && o.price >= 100)
   );
@@ -97,7 +98,10 @@ export function PricingFields({
                   </label>
 
                   <label className="flex-1 block space-y-1">
-                    <span className="text-xs text-gray-500">السعر (دج)</span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      السعر (دج)
+                      {r.perPiece && <span className="text-green-600 font-medium">(للقطعة)</span>}
+                    </span>
                     <input
                       value={r.price}
                       onChange={(e) => setRow(i, { price: e.target.value })}
@@ -111,7 +115,13 @@ export function PricingFields({
                   {rows.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => setRows((prev) => prev.filter((_, x) => x !== i))}
+                      onClick={() => {
+                        setRows((prev) => {
+                          const next = [...prev];
+                          next.splice(i, 1);
+                          return next;
+                        });
+                      }}
                       aria-label="حذف العرض"
                       className="self-end rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-100 transition"
                     >
@@ -131,6 +141,16 @@ export function PricingFields({
                     className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-black focus:outline-none"
                   />
                 </label>
+
+                <label className="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={r.perPiece}
+                    onChange={(e) => setRow(i, { perPiece: e.target.checked })}
+                    className="h-4 w-4 accent-black"
+                  />
+                  <span className="text-gray-700">السعر للقطعة الواحدة (يُضرب في الكمية)</span>
+                </label>
               </div>
             ))}
           </div>
@@ -138,7 +158,7 @@ export function PricingFields({
           {rows.length < 5 && (
             <button
               type="button"
-              onClick={() => setRows((prev) => [...prev, { qty: "", price: "", label: "" }])}
+              onClick={() => setRows((prev) => [...prev, { qty: "", price: "", label: "", perPiece: false }])}
               className="mt-2 rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium hover:bg-gray-50 transition"
             >
               + إضافة عرض

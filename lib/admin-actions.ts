@@ -150,7 +150,8 @@ function parseOffers(v: FormDataEntryValue | null): ProductOffer[] {
         if (seen.has(qty)) return null;
         seen.add(qty);
         const label = String(it?.label ?? "").trim().slice(0, 40);
-        return { qty, price, ...(label ? { label } : {}) };
+        const perPiece = Boolean(it?.perPiece);
+        return { qty, price, ...(label ? { label } : {}), ...(perPiece ? { perPiece } : {}) };
       })
       .filter((x): x is ProductOffer => x !== null)
       .sort((x, y) => x.qty - y.qty)

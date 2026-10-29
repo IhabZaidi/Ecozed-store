@@ -17,7 +17,7 @@ export type ProductImage =
   | { url: string; w?: number; h?: number; b?: string; g?: string };
 
 /** Pack offer: qty pieces for a fixed price + optional badge label. */
-export type ProductOffer = { qty: number; price: number; label?: string };
+export type ProductOffer = { qty: number; price: number; label?: string; perPiece?: boolean };
 
 // One row = one landing page. No storefront.
 export const products = pgTable("products", {

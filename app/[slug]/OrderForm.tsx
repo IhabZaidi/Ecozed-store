@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { WILAYAS } from "@/lib/wilayas";
 import type { ShippingTable } from "@/lib/settings";
 
-type Offer = { qty: number; price: number; label?: string };
+type Offer = { qty: number; price: number; label?: string; perPiece?: boolean };
 
 type Props = {
   slug: string;
@@ -81,7 +81,11 @@ export default function OrderForm({
     ? validOffers[Math.min(sel, validOffers.length - 1)]
     : null;
   const orderQty = chosen ? chosen.qty : qty;
-  const cost = chosen ? chosen.price : price * qty;
+  const cost = chosen
+    ? chosen.perPiece
+      ? chosen.price * chosen.qty
+      : chosen.price
+    : price * qty;
   // Visible methods: a method shows for the chosen wilaya only if its fee
   // there is above 0. No wilaya yet → preview both. Neither qualifies →
   // no delivery: notice + blocked submit.
@@ -481,6 +485,7 @@ export default function OrderForm({
                   <span className="flex shrink-0 items-center gap-1.5">
                     <span className="font-black">
                       {fmt(o.price)} دج
+                      {o.perPiece && <span className="text-green-600 text-sm font-medium ml-1">(للقطعة)</span>}
                     </span>
                   </span>
                 </div>
@@ -563,7 +568,10 @@ export default function OrderForm({
       <div className="mb-4 space-y-1 rounded-xl bg-gray-50 px-4 py-3 text-sm font-bold">
         <div className="flex justify-between">
           <span>💰 سعر {isOffers ? "العرض" : "المنتج"}</span>
-          <span>{fmt(cost)} دج</span>
+          <span>
+            {fmt(cost)} دج
+            {isOffers && chosen?.perPiece && <span className="text-green-600 text-sm font-medium ml-1">(للقطعة)</span>}
+          </span>
         </div>
         <div className="flex justify-between">
           <span>

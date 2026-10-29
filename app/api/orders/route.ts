@@ -98,13 +98,13 @@ export async function POST(req: Request) {
   let subtotal: number;
   let unitPrice = product.price;
   if ((product.pricingMode ?? "qty") === "offers") {
-    const list = (product.offers ?? []) as { qty: number; price: number }[];
+    const list = (product.offers ?? []) as { qty: number; price: number; perPiece?: boolean }[];
     const offer = list.find((o) => o.qty === qty);
     if (!offer) {
       return NextResponse.json({ error: "العرض غير متوفر" }, { status: 400 });
     }
-    subtotal = offer.price;
-    unitPrice = Math.round(offer.price / offer.qty);
+    subtotal = offer.perPiece ? offer.price * offer.qty : offer.price;
+    unitPrice = offer.perPiece ? offer.price : Math.round(offer.price / offer.qty);
   } else {
     subtotal = product.price * qty;
   }
