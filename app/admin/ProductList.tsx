@@ -5,6 +5,7 @@ import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import type { Product } from "@/lib/schema";
 import { deleteProduct, deleteOrder, setOrderStatus } from "@/lib/admin-actions";
+import { Copy, MessageSquare, MapPin, Clock, AlertCircle, Package, Truck, CheckCircle, Trash2, Edit, Plus, Download, Upload, Settings, ArrowLeft, ArrowRight, ChevronDown, ChevronUp, Search, Filter, Calendar, Phone, Mail, Globe, Lock, Unlock, Eye, EyeOff, Star, Heart, Tag, Box, CreditCard, DollarSign, Percent, BarChart, ShoppingCart, Bell, Menu, X as XIcon, Circle, FileText, Rocket, Gift, CheckCircle as CheckCircleIcon, Package as PackageIcon, MapPin as MapPinIcon, Clock as ClockIcon, AlertCircle as AlertCircleIcon, Trash2 as Trash2Icon, Edit as EditIcon, Plus as PlusIcon, Download as DownloadIcon, Upload as UploadIcon, Settings as SettingsIcon, ArrowLeft as ArrowLeftIcon, ArrowRight as ArrowRightIcon, ChevronDown as ChevronDownIcon, ChevronUp as ChevronUpIcon, Search as SearchIcon, Filter as FilterIcon, Calendar as CalendarIcon, Phone as PhoneIcon, Mail as MailIcon, Globe as GlobeIcon, Lock as LockIcon, Unlock as UnlockIcon, Eye as EyeIcon, EyeOff as EyeOffIcon, Star as StarIcon, Heart as HeartIcon, Tag as TagIcon, Box as BoxIcon, CreditCard as CreditCardIcon, DollarSign as DollarSignIcon, Percent as PercentIcon, BarChart as BarChartIcon, ShoppingCart as ShoppingCartIcon, Sparkles, XCircle, Building, Home, User as UserIcon, Users as UsersIcon } from "lucide-react";
 
 interface ProductListProps {
   products: Product[];
@@ -14,11 +15,10 @@ interface ProductListProps {
 function formatDate(date: Date | string | null | undefined) {
   if (!date) return "—";
   const d = new Date(date);
-  return (
-    d.toLocaleDateString("ar-DZ", { day: "2-digit", month: "2-digit", year: "numeric" }) +
-    " " +
-    d.toLocaleTimeString("ar-DZ", { hour: "2-digit", minute: "2-digit", hour12: false })
-  );
+  // Use en-DZ for Western digits (0-9) instead of Arabic-Indic (٠١٢٣...)
+  const datePart = d.toLocaleDateString("en-DZ", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const timePart = d.toLocaleTimeString("en-DZ", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${datePart} ${timePart}`;
 }
 
 function StockBadge({ stock }: { stock: number }) {
@@ -54,14 +54,14 @@ export function ProductList({ products, siteUrl }: ProductListProps) {
     return (
       <section>
         <div className="rounded-2xl border border-dashed border-gray-200 p-8 text-center">
-          <div className="text-4xl mb-2">📦</div>
+          <Package className="text-4xl text-gray-300 mx-auto mb-2" />
           <h3 className="font-bold text-gray-900">لا توجد منتجات بعد</h3>
           <p className="text-sm text-gray-500 mt-1">ابدأ بإنشاء أول Landing Page أو صفحة منتج</p>
           <Link
             href="/admin/products/new"
             className="mt-4 inline-flex items-center gap-2 rounded-xl bg-black px-5 py-2.5 text-white font-medium hover:bg-gray-900 transition"
           >
-            <span>+</span> منتج جديد
+            <Plus className="w-4 h-4" /> منتج جديد
           </Link>
         </div>
       </section>
@@ -79,12 +79,35 @@ export function ProductList({ products, siteUrl }: ProductListProps) {
             >
               <div className="flex-1 min-w-0">
                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <span className="font-bold text-gray-900">{p.active ? "🟢" : "⚪"} {p.title}</span>
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
-                    {(p.pageType ?? "landing") === "product" ? "📄 منتج" : "🚀 هبوط"}
+                  <span className="font-bold text-gray-900 flex items-center gap-1.5">
+                    {p.active ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-gray-400" />
+                    )}
+                    {p.title}
                   </span>
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
-                    {(p.pricingMode ?? "qty") === "offers" ? "🎁 عروض" : "📦 كمية"}
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 flex items-center gap-1">
+                    {(p.pageType ?? "landing") === "product" ? (
+                      <>
+                        <FileText className="w-3 h-3" /> منتج
+                      </>
+                    ) : (
+                      <>
+                        <Rocket className="w-3 h-3" /> هبوط
+                      </>
+                    )}
+                  </span>
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 flex items-center gap-1">
+                    {(p.pricingMode ?? "qty") === "offers" ? (
+                      <>
+                        <Gift className="w-3 h-3" /> عروض
+                      </>
+                    ) : (
+                      <>
+                        <Package className="w-3 h-3" /> كمية
+                      </>
+                    )}
                   </span>
                   <StockBadge stock={p.stock ?? 100} />
                 </div>
@@ -157,12 +180,21 @@ export function ProductList({ products, siteUrl }: ProductListProps) {
 }
 
 const STATUS_AR: Record<string, string> = {
-  draft: "📝 مسودة",
-  new: "🆕 جديد",
-  confirmed: "✅ مؤكد",
-  shipped: "🚚 تم الشحن",
-  delivered: "📦 تم التوصيل",
-  cancelled: "❌ ملغي",
+  draft: "مسودة",
+  new: "جديد",
+  confirmed: "مؤكد",
+  shipped: "تم الشحن",
+  delivered: "تم التوصيل",
+  cancelled: "ملغي",
+};
+
+const STATUS_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  draft: FileText,
+  new: Sparkles,
+  confirmed: CheckCircleIcon,
+  shipped: Truck,
+  delivered: PackageIcon,
+  cancelled: XCircle,
 };
 
 const STATUS_COLOR: Record<string, string> = {
@@ -201,8 +233,10 @@ interface OrdersListProps {
 
 function StatusBadge({ status }: { status: string | null | undefined }) {
   const key = status ?? "new";
+  const Icon = STATUS_ICONS[key] || Sparkles;
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLOR[key] ?? STATUS_COLOR.new}`}>
+    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS_COLOR[key] ?? STATUS_COLOR.new} flex items-center gap-1`}>
+      <Icon className="w-3 h-3" />
       {STATUS_AR[key] ?? key}
     </span>
   );
@@ -211,8 +245,9 @@ function StatusBadge({ status }: { status: string | null | undefined }) {
 function DeliveryBadge({ delivery }: { delivery: string | null | undefined }) {
   const isStopdesk = delivery === "stopdesk";
   return (
-    <span className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-600">
-      {isStopdesk ? "🏢 مكتب" : "🏠 منزل"}
+    <span className="rounded-full px-2 py-0.5 text-[11px] font-medium bg-gray-100 text-gray-600 flex items-center gap-1">
+      {isStopdesk ? <Building className="w-3 h-3" /> : <Home className="w-3 h-3" />}
+      {isStopdesk ? "مكتب" : "منزل"}
     </span>
   );
 }
@@ -342,58 +377,79 @@ export function OrdersList({ orders, products = [], showFilters = true, showExpo
       )}
 
       {/* Orders List */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         {filteredOrders.map((o) => (
           <article
             key={o.id}
-            className="rounded-xl border border-gray-100 bg-white p-3 hover:border-gray-200 hover:shadow-sm transition"
+            className="rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition overflow-hidden"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-gray-900 truncate">
-                  #{o.id} — {o.productTitle} × {o.qty} = <span className="text-green-700">{o.total.toLocaleString("ar-DZ")} دج</span>
-                </p>
-                {(o.shipping ?? 0) > 0 && (
-                  <p className="text-[12px] text-gray-500 mt-0.5">شامل التوصيل {o.shipping?.toLocaleString("ar-DZ")} دج</p>
-                )}
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                <DeliveryBadge delivery={o.delivery} />
-                <StatusBadge status={o.status} />
-              </div>
-            </div>
-
-            <div className="grid gap-1.5 sm:grid-cols-2 text-sm text-gray-600">
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-400">👤</span>
-                <span className="font-medium text-gray-900">{o.fullName}</span>
-                <span className="text-gray-400">—</span>
-                <span dir="ltr" className="font-mono">{o.phone}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-gray-400">📍</span>
-                <span>{o.wilayaName} ({o.wilayaCode}) — {o.commune}</span>
-              </div>
-              {o.address && (
-                <div className="sm:col-span-2 flex items-center gap-1.5 text-[12px]">
-                  <span className="text-gray-400">📌</span>
-                  <span className="truncate">{o.address}</span>
+            <div className="p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 truncate">
+                    #{o.id} — {o.productTitle} × {o.qty} = <span className="text-green-700">{o.total.toLocaleString("ar-DZ")} دج</span>
+                  </p>
+                  {(o.shipping ?? 0) > 0 && (
+                    <p className="text-[12px] text-gray-500 mt-0.5">شامل التوصيل {o.shipping?.toLocaleString("ar-DZ")} دج</p>
+                  )}
                 </div>
-              )}
-              <div className="flex items-center gap-1.5 text-[12px] text-gray-400">
-                <span>🕐</span>
-                <span dir="ltr" className="font-mono">{formatDate(o.createdAt)}</span>
+                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                  <DeliveryBadge delivery={o.delivery} />
+                  <StatusBadge status={o.status} />
+                </div>
+              </div>
+
+              <div className="grid gap-1.5 sm:grid-cols-2 text-sm text-gray-600">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400">👤</span>
+                  <span className="font-medium text-gray-900">{o.fullName}</span>
+                  <span className="text-gray-400">—</span>
+                  <span className="flex items-center gap-1.5">
+                    <span dir="ltr" className="font-mono">{o.phone}</span>
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard.writeText(o.phone)}
+                      className="text-gray-400 hover:text-gray-600 text-xs p-1.5 rounded transition"
+                      title="نسخ الرقم"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
+                    <a
+                      href={`https://wa.me/${o.phone.replace(/^0/, '213')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-green-600 hover:text-green-700 text-xs p-1.5 rounded transition"
+                      title="التواصل عبر واتساب"
+                    >
+                      <MessageSquare className="w-4 h-4 text-green-600" />
+                    </a>
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-gray-400">📍</span>
+                  <span>{o.wilayaName} ({o.wilayaCode}) — {o.commune}</span>
+                </div>
+                {o.address && (
+                  <div className="sm:col-span-2 flex items-center gap-1.5 text-[12px]">
+                    <span className="text-gray-400">📌</span>
+                    <span className="truncate">{o.address}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-1.5 text-[12px] text-gray-400">
+                  <span>🕐</span>
+                  <span dir="ltr" className="font-mono">{formatDate(o.createdAt)}</span>
+                </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="mt-3 pt-3 border-t flex flex-wrap items-center gap-2">
-              <form action={setOrderStatus} className="flex gap-1.5 flex-1 min-w-[200px]">
+            {/* Actions - clearly grouped with a distinct background */}
+            <div className="bg-gray-50 border-t border-gray-200 px-3 py-3 rounded-b-2xl">
+              <form action={setOrderStatus} className="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="id" value={o.id} />
                 <select
                   name="status"
                   defaultValue={o.status || "new"}
-                  className="flex-1 rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:border-black focus:outline-none"
+                  className="flex-1 min-w-[160px] rounded-lg border border-gray-200 px-2 py-1.5 text-sm focus:border-black focus:outline-none"
                   aria-label="تغيير حالة الطلب"
                 >
                   {Object.entries(STATUS_AR).map(([value, label]) => (
@@ -403,14 +459,14 @@ export function OrdersList({ orders, products = [], showFilters = true, showExpo
                 <button className="rounded-lg bg-black px-3 py-1.5 font-medium text-white text-sm hover:bg-gray-900 transition whitespace-nowrap">
                   حفظ
                 </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteClick(o.id, `#${o.id} — ${o.productTitle}`)}
+                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 transition whitespace-nowrap"
+                >
+                  حذف
+                </button>
               </form>
-              <button
-                type="button"
-                onClick={() => handleDeleteClick(o.id, `#${o.id} — ${o.productTitle}`)}
-                className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 transition whitespace-nowrap"
-              >
-                حذف
-              </button>
             </div>
           </article>
         ))}
